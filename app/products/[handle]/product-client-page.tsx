@@ -1,13 +1,47 @@
+// product-client-page.tsx
 "use client"
 
-// Import 'useCallback'
 import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
-import { Heart, Share2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Heart, Share2, ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react" // Added Minus, Plus
 import type { ShopifyProduct, ProductVariant } from "@/lib/shopify-types"
+import { useCart } from "@/context/cart"
+
+interface QuantitySelectorProps {
+  quantity: number
+  setQuantity: (quantity: number) => void
+}
+
+function QuantitySelector({ quantity, setQuantity }: QuantitySelectorProps) {
+  const increment = () => setQuantity(quantity + 1)
+  const decrement = () => setQuantity(Math.max(1, quantity - 1)) // Prevent going below 1
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={decrement}
+        className="border-border"
+      >
+        <Minus className="w-4 h-4" />
+      </Button>
+      <span className="w-12 text-center font-medium">{quantity}</span>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={increment}
+        className="border-border"
+      >
+        <Plus className="w-4 h-4" />
+      </Button>
+    </div>
+  )
+}
+// --- End Embedded Component ---
 
 interface ProductClientPageProps {
   product: ShopifyProduct
@@ -16,8 +50,10 @@ interface ProductClientPageProps {
 export default function ProductClientPage({ product }: ProductClientPageProps) {
   const [isFavorite, setIsFavorite] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [quantity, setQuantity] = useState(1)
+  const { addToCart } = useCart()
 
-  // --- VARIANT LOGIC (Unchanged) ---
+  // --- VARIANT LOGIC ---
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
     () => {
       const defaults: Record<string, string> = {}
@@ -39,6 +75,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
       )
     })
     setActiveVariant(match || null)
+    setQuantity(1) // Reset quantity when variant changes
   }, [selectedOptions, product.variants])
 
   const handleOptionSelect = (optionName: string, value: string) => {
@@ -48,40 +85,31 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
     }))
   }
 
-  // --- NEW: AVAILABILITY CHECKER ---
-  // This function checks if a *hypothetical* selection is available
+  // --- AVAILABILITY CHECKER ---
   const checkAvailability = useCallback(
     (optionName: string, optionValue: string): boolean => {
-      // 1. Create a hypothetical selection based on the current state
-      //    plus the new option being checked.
       const hypotheticalSelection = {
         ...selectedOptions,
         [optionName]: optionValue,
       }
-
-      // 2. Find a variant that matches this hypothetical selection
       const matchingVariant = product.variants.find((variant) => {
-        // Check if this variant matches the *full* hypothetical selection
         return Object.entries(hypotheticalSelection).every(([name, value]) =>
           variant.selectedOptions.some(
             (opt) => opt.name === name && opt.value === value
           )
         )
       })
-
-      // 3. If a match is found, return its availability.
-      //    If no match is found (e.g., "Small" + "Red" doesn't exist), return false.
       return matchingVariant?.availableForSale ?? false
     },
-    [selectedOptions, product.variants] // Re-run when selections or variants change
+    [selectedOptions, product.variants]
   )
-  // --- END NEW FUNCTION ---
 
   const displayPrice = activeVariant?.price ?? product.price
   const displayOriginalPrice =
     activeVariant?.compareAtPrice ?? product.originalPrice
   const isAvailable = activeVariant?.availableForSale ?? false
 
+  // --- IMAGE LOGIC ---
   const images =
     product.images && product.images.length > 0
       ? product.images
@@ -102,13 +130,37 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
     }
   }, [activeVariant, images])
 
+  // --- ADD TO CART HANDLER ---
+  const handleAddToCart = () => {
+    if (!activeVariant) {
+      console.error("No variant selected")
+      return
+    }
+    const variantTitle = activeVariant.selectedOptions
+      .map((opt) => opt.value)
+      .join(" / ")
+
+    addToCart({
+      variantId: activeVariant.id,
+      merchandiseId: activeVariant.id,
+      quantity: quantity,
+      title: product.title,
+      handle: product.handle,
+      image: activeVariant.image || product.image,
+      price: activeVariant.price,
+      variantTitle: variantTitle,
+    })
+
+    console.log("Added to cart:", product.title, variantTitle, quantity)
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <Header />
 
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12">
-          {/* Images (Unchanged) */}
+          {/* Images */}
           <div className="space-y-4">
             <div className="relative aspect-square overflow-hidden rounded-lg bg-secondary">
               {images[currentImageIndex] ? (
@@ -200,14 +252,13 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
               {product.description}
             </p>
 
-            {/* --- UPDATED: VARIANT SELECTION --- */}
+            {/* VARIANT SELECTION */}
             <div className="space-y-4">
               {product.options.map((option) => (
                 <div key={option.id}>
                   <p className="font-medium mb-2">{option.name}</p>
                   <div className="flex flex-wrap gap-2">
                     {option.values.map((value) => {
-                      // Check state for this specific button
                       const isSelected = selectedOptions[option.name] === value
                       const isOptionAvailable = checkAvailability(
                         option.name,
@@ -218,14 +269,13 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                         <button
                           key={value}
                           onClick={() => handleOptionSelect(option.name, value)}
-                          // Disable button if the option is not available
                           disabled={!isOptionAvailable}
                           className={`px-4 py-2 border rounded-md text-sm font-medium transition ${
                             isSelected
-                              ? "bg-foreground text-background border-foreground" // Selected style
+                              ? "bg-foreground text-background border-foreground"
                               : isOptionAvailable
-                              ? "border-border hover:border-foreground" // Available style
-                              : "border-border text-muted-foreground line-through cursor-not-allowed opacity-60" // Disabled style
+                              ? "border-border hover:border-foreground"
+                              : "border-border text-muted-foreground line-through cursor-not-allowed opacity-60"
                           }`}
                         >
                           {value}
@@ -236,7 +286,16 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                 </div>
               ))}
             </div>
-            {/* --- END UPDATED SECTION --- */}
+
+            {/* --- 2. Using the embedded QuantitySelector --- */}
+            <div className="pt-4">
+              <p className="font-medium mb-2">Quantity</p>
+              <QuantitySelector
+                quantity={quantity}
+                setQuantity={setQuantity}
+              />
+            </div>
+            {/* --- End Quantity Selector --- */}
 
             <div className="flex gap-3 pt-4">
               <Button
@@ -246,6 +305,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
                 }`}
                 disabled={!isAvailable}
+                onClick={handleAddToCart}
               >
                 {isAvailable
                   ? "Add to Cart"

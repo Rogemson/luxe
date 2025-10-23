@@ -1,5 +1,3 @@
-// Shopify Storefront API client
-
 import type {
     ShopifyProduct,
     ShopifyCollection,
@@ -24,19 +22,13 @@ import {
   GET_COLLECTION_BY_HANDLE_QUERY,
 } from "@/lib/queries/collection-queries"
 
+import {
+  CART_CREATE_MUTATION,
+} from "@/lib/queries/checkout-queries"
+
 const SHOPIFY_STORE_URL = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL
 const SHOPIFY_ACCESS_TOKEN = process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN
 const SHOPIFY_API_VERSION = "2024-01"
-
-if (!SHOPIFY_STORE_URL || !SHOPIFY_ACCESS_TOKEN) {
-  console.error("❌ Missing Shopify environment variables:")
-  console.error("NEXT_PUBLIC_SHOPIFY_STORE_URL:", SHOPIFY_STORE_URL ? "✅ Set" : "❌ Missing")
-  console.error("NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN:", SHOPIFY_ACCESS_TOKEN ? "✅ Set" : "❌ Missing")
-  console.error("\nMake sure your .env.local file exists in the project root with:")
-  console.error("NEXT_PUBLIC_SHOPIFY_STORE_URL=https://your-store.myshopify.com")
-  console.error("NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN=your_token")
-}
-
 
 // Helper function to make Shopify API requests
 async function shopifyFetch<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
@@ -46,7 +38,7 @@ async function shopifyFetch<T>(query: string, variables?: Record<string, unknown
     throw new Error(errorMsg)
   }
 
-  const endpoint = `${SHOPIFY_STORE_URL}/api/${SHOPIFY_API_VERSION}/graphql.json`
+  const endpoint = `https://${SHOPIFY_STORE_URL}/api/${SHOPIFY_API_VERSION}/graphql.json`
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -281,5 +273,33 @@ export async function getRelatedProducts(productId: string): Promise<ShopifyProd
   } catch (error) {
     console.error(`❌ Error fetching related products for (${productId}):`, error)
     return []
+  }
+}
+
+export async function createShopifyCheckout(items: { merchandiseId: string; quantity: number }[]) {
+  try {
+    console.log("Creating Shopify checkout with items:", items);
+    const response = await shopifyFetch(CART_CREATE_MUTATION, { lines: items });
+    console.log("Full Shopify response:", response);
+
+    if (!response?.data?.cartCreate) {
+      throw new Error("Shopify response missing 'cartCreate'. Check your mutation or API version.");
+    }
+
+    const { cart, userErrors } = response.data.cartCreate;
+
+    if (userErrors && userErrors.length > 0) {
+      console.error("Shopify cart creation errors:", userErrors);
+      throw new Error(userErrors.map(e => e.message).join(", "));
+    }
+
+    if (!cart?.checkoutUrl) {
+      throw new Error("Checkout creation failed: Shopify did not return a checkout URL.");
+    }
+
+    return cart.checkoutUrl;
+  } catch (error) {
+    console.error("Error creating Shopify checkout:", error);
+    throw error;
   }
 }

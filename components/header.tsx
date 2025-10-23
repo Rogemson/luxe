@@ -4,10 +4,12 @@ import { useState } from "react"
 import { Menu, X, ShoppingCart, Search } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { useCart } from "@/context/cart"
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
-
+  const { cartCount } = useCart()
+  
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -41,10 +43,17 @@ export function Header() {
             <button className="p-2 text-foreground hover:text-accent transition-colors">
               <Search className="w-5 h-5" />
             </button>
-            <button className="relative p-2 text-foreground hover:text-accent transition-colors">
+            <Link
+              href="/cart"
+              className="relative p-2 text-foreground hover:text-accent transition-colors"
+            >
               <ShoppingCart className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full"></span>
-            </button>
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
             <Button variant="outline" className="hidden sm:inline-flex text-sm font-medium bg-transparent">
               Account
             </Button>

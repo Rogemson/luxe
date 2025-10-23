@@ -1,9 +1,3 @@
-// Type definitions for Shopify Storefront API
-
-// ==========================
-// GraphQL Response Types
-// ==========================
-
 export interface ShopifyCollectionResponse {
   data: {
     collections: {
@@ -48,8 +42,6 @@ export interface ShopifyCollectionByHandleResponse {
   }
 }
 
-// --- ADD THESE NEW TYPES ---
-
 export interface ShopifyProductsResponse {
   data: {
     products: {
@@ -62,20 +54,15 @@ export interface ShopifyProductsResponse {
 
 export interface ShopifyProductByHandleResponse {
   data: {
-    // This can be null if no product is found with the handle
     productByHandle: ShopifyProductNode | null
   }
 }
 
 export interface ShopifyRelatedProductsResponse {
   data: {
-    // Note: productRecommendations returns a direct array of nodes,
-    // not an object with edges.
     productRecommendations: ShopifyProductNode[]
   }
 }
-
-// --- END OF NEW TYPES ---
 
 export interface ShopifyProductNode {
   id: string
@@ -98,7 +85,7 @@ export interface ShopifyProductNode {
     url: string
     altText?: string
   }
-  images: {
+  images?: {
     edges: Array<{
       node: {
         url: string
@@ -106,12 +93,20 @@ export interface ShopifyProductNode {
       }
     }>
   }
+  options?: Array<{
+    id: string
+    name: string
+    values: string[]
+  }>
   variants: {
     edges: Array<{
       node: {
         id: string
         title: string
         availableForSale: boolean
+        price?: { amount: string }
+        compareAtPrice?: { amount: string }
+        image?: { url: string }
         selectedOptions: Array<{
           name: string
           value: string
@@ -181,4 +176,58 @@ export interface ShopifyCart {
     color?: string
   }>
   total: number
+}
+
+export interface CartItem {
+  variantId: string
+  merchandiseId: string
+  quantity: number
+  title: string
+  handle: string
+  image: string
+  price: number
+  variantTitle: string
+}
+
+// Define the shape of the context
+export interface CartContextType {
+  cart: CartItem[]
+  addToCart: (item: CartItem) => void
+  removeFromCart: (variantId: string) => void
+  updateQuantity: (variantId: string, quantity: number) => void
+  cartCount: number
+  totalPrice: number
+  isEmpty: boolean
+  checkout: () => Promise<void>
+}
+
+export interface ShopifyCheckoutUserError {
+  field: string[]
+  message: string
+}
+
+export interface ShopifyCheckout {
+  id: string
+  webUrl: string
+}
+
+export interface ShopifyCartResponse {
+  cartCreate: {
+    cart: {
+      id: string
+      checkoutUrl?: string // optional because sometimes Shopify may not return it immediately
+      lines: {
+        edges: Array<{
+          node: {
+            id: string
+            quantity: number
+            merchandise: {
+              id: string
+              title: string
+            }
+          }
+        }>
+      }
+    }
+  }
 }
