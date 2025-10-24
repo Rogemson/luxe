@@ -32,7 +32,7 @@ const SHOPIFY_ACCESS_TOKEN = process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_T
 const SHOPIFY_API_VERSION = "2024-01"
 
 // Helper function to make Shopify API requests
-async function shopifyFetch<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+export async function shopifyFetch<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   if (!SHOPIFY_STORE_URL || !SHOPIFY_ACCESS_TOKEN) {
     const errorMsg = `Shopify configuration is missing. Store URL: ${SHOPIFY_STORE_URL ? "set" : "MISSING"}, Access Token: ${SHOPIFY_ACCESS_TOKEN ? "set" : "MISSING"}`
     console.error("❌", errorMsg)

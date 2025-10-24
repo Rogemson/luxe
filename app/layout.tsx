@@ -19,7 +19,6 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "LUXE - Premium Clothing Store",
   description: "Discover our curated collection of premium clothing designed for the modern lifestyle.",
-  generator: "v0.app",
 }
 
 export default function RootLayout({
