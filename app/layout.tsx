@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Playfair_Display, Inter } from "next/font/google"
 import "./globals.css"
 import { CartProvider } from "@/context/cart"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <CartProvider>
           {children}
+          <SpeedInsights />
         </CartProvider>{" "}
       </body>
     </html>
