@@ -13,7 +13,7 @@ interface CollectionCardProps {
 
 export function CollectionCard({ id, title, image, productCount, isAboveTheFold = false }: CollectionCardProps) {
   return (
-    <Link href={`/collection/${id}`}>
+    <Link href={`/collections/${id}`}>
       <div className="group cursor-pointer">
         <div className="relative overflow-hidden bg-secondary mb-4 aspect-square">
           <Image

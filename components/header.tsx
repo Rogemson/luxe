@@ -22,7 +22,7 @@ export function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-12">
             <Link
-              href="/collection"
+              href="/collections"
               className="text-sm font-medium text-foreground hover:text-accent transition-colors"
             >
               Collections

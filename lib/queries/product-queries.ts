@@ -1,5 +1,3 @@
-// /lib/queries/shopify-queries.ts
-
 export const GET_PRODUCTS_QUERY = `
   query getProducts($first: Int!) {
     products(first: $first) {
