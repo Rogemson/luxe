@@ -12,6 +12,7 @@ export interface ShopifyCollectionResponse {
             altText?: string
           }
           products: {
+            totalCount: number
             edges: Array<{
               node: ShopifyProductNode
             }>
@@ -34,6 +35,7 @@ export interface ShopifyCollectionByHandleResponse {
         altText?: string
       }
       products: {
+        totalCount: number
         edges: Array<{
           node: ShopifyProductNode
         }>

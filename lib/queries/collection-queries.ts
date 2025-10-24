@@ -12,7 +12,7 @@ export const GET_COLLECTIONS_QUERY = `
             url
             altText
           }
-          products(first: 1) {
+          products(first: 20) {
             edges {
               node {
                 id

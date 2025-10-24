@@ -1,9 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Menu, X, ShoppingCart, Search } from "lucide-react"
+import { Menu, X, ShoppingCart, Search, User } from "lucide-react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { useCart } from "@/context/cart"
 
 export function Header() {
@@ -54,9 +53,15 @@ export function Header() {
                 </span>
               )}
             </Link>
-            <Button variant="outline" className="hidden sm:inline-flex text-sm font-medium bg-transparent">
-              Account
-            </Button>
+
+            <Link
+              href="/account"
+              className="p-2 text-foreground hover:text-accent transition-colors"
+            >
+              <User className="w-5 h-5" />
+            </Link>
+
+            {/* Mobile Menu Toggle */}
             <button onClick={() => setIsOpen(!isOpen)} className="md:hidden p-2 text-foreground">
               {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>

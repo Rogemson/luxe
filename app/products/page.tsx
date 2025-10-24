@@ -1,12 +1,57 @@
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { ProductCard } from "@/components/product-card"
-import { Button } from "@/components/ui/button"
-import { ChevronDown } from "lucide-react"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { getProducts } from "@/lib/shopify-client"
+import type { ShopifyProduct } from "@/lib/shopify-types"
 
-export default async function ProductsPage() {
-  const products = await getProducts(30)
+export default function ProductsPage() {
+  const [products, setProducts] = useState<ShopifyProduct[]>([])
+  const [sortBy, setSortBy] = useState<string>("")
+  const [filter] = useState<string>("all")
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const data = await getProducts(30)
+      setProducts(data)
+    }
+    fetchData()
+  }, [])
+
+  // Apply sorting and filtering dynamically
+  const filteredAndSortedProducts = useMemo(() => {
+    let updatedProducts = [...products]
+
+    // ✅ Filter
+    if (filter !== "all") {
+      updatedProducts = updatedProducts.filter(
+        (p) => p.category?.toLowerCase() === filter.toLowerCase()
+      )
+    }
+
+    // ✅ Sort
+    switch (sortBy) {
+      case "price-low-high":
+        updatedProducts.sort((a, b) => a.price - b.price)
+        break
+      case "price-high-low":
+        updatedProducts.sort((a, b) => b.price - a.price)
+        break
+      case "alphabetical":
+        updatedProducts.sort((a, b) => a.title.localeCompare(b.title))
+        break
+      case "alphabetical-desc":
+        updatedProducts.sort((a, b) => b.title.localeCompare(a.title))
+        break
+      default:
+        break
+    }
+
+    return updatedProducts
+  }, [products, sortBy, filter])
 
   return (
     <main className="min-h-screen bg-background">
@@ -30,45 +75,48 @@ export default async function ProductsPage() {
           {/* Filter Bar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-12 pb-6 border-b border-border">
             <p className="text-sm text-foreground/60">
-              Showing {products.length} {products.length === 1 ? "product" : "products"}
+              Showing {filteredAndSortedProducts.length}{" "}
+              {filteredAndSortedProducts.length === 1 ? "product" : "products"}
             </p>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex items-center gap-2 bg-transparent border-border text-foreground hover:bg-secondary"
-              >
-                Sort <ChevronDown className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="flex items-center gap-2 bg-transparent border-border text-foreground hover:bg-secondary"
-              >
-                Filter <ChevronDown className="w-4 h-4" />
-              </Button>
+
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Sort Dropdown */}
+              <Select onValueChange={setSortBy}>
+                <SelectTrigger className="w-[160px] border-border bg-transparent text-foreground">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="price-low-high">Price: Low → High</SelectItem>
+                  <SelectItem value="price-high-low">Price: High → Low</SelectItem>
+                  <SelectItem value="alphabetical">A → Z</SelectItem>
+                  <SelectItem value="alphabetical-desc">Z → A</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Products Grid */}
-          {products.length === 0 ? (
+          {filteredAndSortedProducts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-foreground/60 text-lg">No products found.</p>
               <p className="text-foreground/60 text-sm mt-2">
-                Make sure your Shopify store has products and your environment variables are set correctly.
+                Try adjusting your filters or sorting options.
               </p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.map((product, index) => (
+              {filteredAndSortedProducts.map((product, index) => (
                 <ProductCard
-                    key={product.id}
-                    id={product.handle}
-                    title={product.title}
-                    price={product.price}
-                    image={product.image}
-                    category={product.collection}
-                    index={index}
+                  key={product.id}
+                  id={product.handle}
+                  title={product.title}
+                  price={product.price}
+                  image={product.image}
+                  category={product.collection}
+                  index={index}
                 />
-                ))}
+              ))}
             </div>
           )}
         </div>
