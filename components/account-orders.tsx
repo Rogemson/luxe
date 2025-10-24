@@ -1,115 +1,144 @@
-"use client"
+'use client'
 
-import { Package, CheckCircle, Truck, Clock } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from 'react'
+import { Package, Calendar, DollarSign, ChevronDown } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface Order {
   id: string
-  number: string
+  number: number
   date: string
-  total: number
-  status: "delivered" | "processing" | "shipped"
-  items: number
+  total: string
+  currency: string
+  status: string
+  items: any[]
 }
 
-const orders: Order[] = [
-  {
-    id: "1",
-    number: "#ORD-001",
-    date: "Oct 15, 2024",
-    total: 249.99,
-    status: "delivered",
-    items: 3,
-  },
-  {
-    id: "2",
-    number: "#ORD-002",
-    date: "Oct 8, 2024",
-    total: 189.5,
-    status: "delivered",
-    items: 2,
-  },
-  {
-    id: "3",
-    number: "#ORD-003",
-    date: "Sep 28, 2024",
-    total: 329.0,
-    status: "shipped",
-    items: 4,
-  },
-]
+export function AccountOrders({ email }: { email: string }) {
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
 
-const statusConfig = {
-  delivered: {
-    icon: CheckCircle,
-    color: "bg-green-50 text-green-700 border-green-200",
-    label: "Delivered",
-  },
-  processing: {
-    icon: Clock,
-    color: "bg-blue-50 text-blue-700 border-blue-200",
-    label: "Processing",
-  },
-  shipped: { icon: Truck, color: "bg-amber-50 text-amber-700 border-amber-200", label: "Shipped" },
-}
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const token = localStorage.getItem('shopifyCustomerToken')
+        
+        if (!token) {
+          setOrders([])
+          setLoading(false)
+          return
+        }
 
-export function AccountOrders() {
+        console.log('📦 [ORDERS] Fetching orders...')
+
+        const response = await fetch('/api/auth/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.orders) {
+          setOrders(data.orders)
+          console.log('✅ [ORDERS] Loaded:', data.orders.length, 'orders')
+        } else {
+          console.error('❌ [ORDERS] Error:', data.error)
+          setOrders([])
+        }
+      } catch (error) {
+        console.error('❌ [ORDERS] Exception:', error)
+        setOrders([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchOrders()
+  }, [])
+
+  if (loading) {
+    return <div className="p-6">Loading orders...</div>
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-foreground mb-2">Order History</h2>
-        <p className="text-muted-foreground">View and manage your past orders</p>
+        <h2 className="text-2xl font-bold">Your Orders</h2>
+        <p className="text-muted-foreground">View and manage your orders</p>
       </div>
 
-      {orders.length > 0 ? (
-        <div className="space-y-4">
-          {orders.map((order) => {
-            const StatusIcon = statusConfig[order.status].icon
-            return (
-              <div
-                key={order.id}
-                className="bg-card border border-border rounded-lg p-6 hover:border-accent hover:shadow-md transition-all duration-200"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4 pb-4 border-b border-border">
-                  <div>
-                    <h3 className="font-serif text-lg font-semibold text-foreground">{order.number}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{order.date}</p>
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border capitalize whitespace-nowrap flex items-center gap-2 w-fit ${
-                      statusConfig[order.status].color
-                    }`}
-                  >
-                    <StatusIcon className="w-4 h-4" />
-                    {statusConfig[order.status].label}
-                  </span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Package className="w-5 h-5" />
-                    <span className="text-sm">{order.items} items</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="sm:text-right">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Total</p>
-                      <p className="font-serif text-xl font-semibold text-foreground">${order.total.toFixed(2)}</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                      View Details →
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+      {orders.length === 0 ? (
+        <div className="bg-card rounded-lg border p-12 text-center">
+          <Package className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">No orders yet</p>
+          <p className="text-sm text-muted-foreground">Start shopping to see your orders here</p>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-lg p-12 text-center">
-          <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-foreground font-semibold text-lg mb-2">No orders yet</p>
-          <p className="text-muted-foreground mb-6">Start shopping to see your orders here</p>
-          <Button>Continue Shopping</Button>
+        <div className="space-y-4">
+          {orders.map((order: Order) => (
+            <div key={order.id} className="bg-card rounded-lg border overflow-hidden hover:shadow-md transition-shadow">
+              <button
+                onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
+              >
+                <div className="text-left flex-1">
+                  <p className="font-medium">Order #{order.number}</p>
+                  <div className="flex items-center gap-6 text-sm text-muted-foreground mt-1">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {new Date(order.date).toLocaleDateString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <DollarSign className="w-4 h-4" />
+                      {order.total} {order.currency}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    order.status === 'FULFILLED' 
+                      ? 'bg-green-100 text-green-800' 
+                      : order.status === 'PARTIALLY_FULFILLED'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {order.status}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedOrder === order.id ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+
+              {expandedOrder === order.id && (
+                <div className="border-t px-6 py-4 bg-muted/30 space-y-4">
+                  <div>
+                    <p className="text-sm font-medium mb-3">Items</p>
+                    <div className="space-y-2">
+                      {order.items.map((item: any) => (
+                        <div key={item.id} className="flex items-start gap-4">
+                          {item.image && (
+                            <img 
+                              src={item.image} 
+                              alt={item.title}
+                              className="w-12 h-12 rounded object-cover"
+                            />
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{item.title}</p>
+                            <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Button variant="outline" className="w-full">
+                    View Order Details
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

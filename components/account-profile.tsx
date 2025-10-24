@@ -1,106 +1,199 @@
-"use client"
+'use client'
 
-import { Mail, Phone, MapPin, Star, Edit2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from 'react'
+import { User, Mail, Phone, MapPin, Edit2, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
-export function AccountProfile() {
+interface CustomerData {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  address: string
+}
+
+export function AccountProfile({ email }: { email: string }) {
+  const [profile, setProfile] = useState<CustomerData>({
+    firstName: '',
+    lastName: '',
+    email: email,
+    phone: '',
+    address: ''
+  })
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('shopifyCustomerToken')
+        
+        if (!token) {
+          setLoading(false)
+          return
+        }
+
+        console.log('👤 [PROFILE] Fetching customer data...')
+
+        const response = await fetch('/api/auth/customer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.customer) {
+          const customer = data.customer
+          setProfile({
+            firstName: customer.firstName || '',
+            lastName: customer.lastName || '',
+            email: customer.email || email,
+            phone: customer.phone || '',
+            address: customer.defaultAddress
+              ? `${customer.defaultAddress.address1}, ${customer.defaultAddress.city}`
+              : ''
+          })
+          console.log('✅ [PROFILE] Loaded:', customer.email)
+        } else {
+          console.error('❌ [PROFILE] Error:', data.error)
+        }
+      } catch (error) {
+        console.error('❌ [PROFILE] Exception:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProfile()
+  }, [email])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setProfile(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    // Save to localStorage for now
+    localStorage.setItem('customerProfile', JSON.stringify(profile))
+    console.log('✅ Profile saved')
+    setEditing(false)
+    setSaving(false)
+  }
+
+  if (loading) {
+    return <div className="p-6">Loading profile...</div>
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-foreground mb-2">Profile Information</h2>
-          <p className="text-muted-foreground">Manage and update your personal details</p>
+          <h2 className="text-2xl font-bold">Profile Information</h2>
+          <p className="text-muted-foreground">Manage your account details</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-2 bg-transparent whitespace-nowrap">
-          <Edit2 className="w-4 h-4" />
-          Edit Profile
-        </Button>
-      </div>
-
-      <div className="bg-card border border-border rounded-lg p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row gap-8 mb-8 pb-8 border-b border-border">
-          <div className="flex-shrink-0">
-            <div className="w-24 h-24 bg-gradient-to-br from-accent to-primary rounded-full flex items-center justify-center text-white text-3xl font-serif">
-              JD
-            </div>
-          </div>
-          <div className="flex-1 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  First Name
-                </label>
-                <p className="text-foreground mt-2 text-lg font-medium">John</p>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Last Name</label>
-                <p className="text-foreground mt-2 text-lg font-medium">Doe</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="flex items-start gap-4">
-            <Mail className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
-            <div className="flex-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Email Address
-              </label>
-              <p className="text-foreground mt-2 text-lg">john@example.com</p>
-              <p className="text-xs text-muted-foreground mt-1">Primary email for account notifications</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-4">
-            <Phone className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
-            <div className="flex-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Phone Number
-              </label>
-              <p className="text-foreground mt-2 text-lg">+1 (555) 123-4567</p>
-              <p className="text-xs text-muted-foreground mt-1">Used for order updates and support</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-card border border-border rounded-lg p-6 sm:p-8">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h3 className="font-serif text-xl font-semibold text-foreground">Default Shipping Address</h3>
-            <p className="text-sm text-muted-foreground mt-1">Used for all future orders</p>
-          </div>
-          <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-            <Edit2 className="w-4 h-4" />
+        {!editing && (
+          <Button
+            onClick={() => setEditing(true)}
+            variant="outline"
+            size="sm"
+          >
+            <Edit2 className="w-4 h-4 mr-2" />
             Edit
           </Button>
-        </div>
-        <div className="flex items-start gap-4">
-          <MapPin className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
-          <div className="flex-1">
-            <p className="text-foreground font-semibold text-lg">123 Fashion Street</p>
-            <p className="text-muted-foreground mt-1">Apt 4B</p>
-            <p className="text-muted-foreground">New York, NY 10001</p>
-            <p className="text-muted-foreground">United States</p>
-            <p className="text-muted-foreground mt-2 text-sm">ZIP: 10001</p>
-          </div>
-        </div>
+        )}
       </div>
 
-      <div className="bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/20 rounded-lg p-6 sm:p-8">
-        <div className="flex items-start gap-4">
-          <Star className="w-8 h-8 text-accent flex-shrink-0" />
+      <div className="bg-card rounded-lg border p-6 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <h3 className="font-serif text-lg font-semibold text-foreground">Member Status</h3>
-            <p className="text-muted-foreground mt-2">You are a valued member since October 2023</p>
-            <div className="mt-4 flex items-center gap-2">
-              <div className="flex-1 bg-muted rounded-full h-2">
-                <div className="bg-accent h-2 rounded-full" style={{ width: "65%" }}></div>
-              </div>
-              <span className="text-sm font-medium text-foreground">65% to next tier</span>
-            </div>
+            <label className="text-sm font-medium">First Name</label>
+            <input
+              type="text"
+              name="firstName"
+              value={profile.firstName}
+              onChange={handleChange}
+              disabled={!editing}
+              className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted cursor-not-allowed"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Last Name</label>
+            <input
+              type="text"
+              name="lastName"
+              value={profile.lastName}
+              onChange={handleChange}
+              disabled={!editing}
+              className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted cursor-not-allowed"
+            />
           </div>
         </div>
+
+        <div>
+          <label className="text-sm font-medium flex items-center">
+            <Mail className="w-4 h-4 mr-2" />
+            Email
+          </label>
+          <input
+            type="email"
+            value={profile.email}
+            disabled
+            className="w-full mt-1 px-3 py-2 border rounded-lg bg-muted cursor-not-allowed"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium flex items-center">
+            <Phone className="w-4 h-4 mr-2" />
+            Phone
+          </label>
+          <input
+            type="tel"
+            name="phone"
+            value={profile.phone}
+            onChange={handleChange}
+            disabled={!editing}
+            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted cursor-not-allowed"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium flex items-center">
+            <MapPin className="w-4 h-4 mr-2" />
+            Address
+          </label>
+          <input
+            type="text"
+            name="address"
+            value={profile.address}
+            onChange={handleChange}
+            disabled={!editing}
+            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-muted cursor-not-allowed"
+          />
+        </div>
+
+        {editing && (
+          <div className="flex gap-2 pt-4">
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+            <Button
+              onClick={() => setEditing(false)}
+              variant="outline"
+              className="flex-1"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
