@@ -45,7 +45,7 @@ export function CartSummary({ subtotal, shipping = 0, tax = 0, discount = 0, onC
           </div>
         )}
 
-        <div className="border-t border-border pt-3 flex justify-between font-serif text-lg font-semibold">
+        <div className="border-t border-border pt-3 flex justify-between text-lg font-semibold">
           <span>Total</span>
           <span>${total.toFixed(2)}</span>
         </div>
@@ -54,12 +54,12 @@ export function CartSummary({ subtotal, shipping = 0, tax = 0, discount = 0, onC
       <Button
         onClick={onCheckout}
         disabled={isProcessing}
-        className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
       >
         {isProcessing ? "Processing..." : "Proceed to Checkout"}
       </Button>
 
-      <Button variant="outline" className="w-full bg-transparent">
+      <Button variant="outline" className="w-full bg-transparent cursor-pointer">
         Continue Shopping
       </Button>
     </div>

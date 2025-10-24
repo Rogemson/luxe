@@ -1,12 +1,19 @@
-// product-client-page.tsx
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
-import { Heart, Share2, ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react" // Added Minus, Plus
+import {
+  Heart,
+  Share2,
+  ChevronLeft,
+  ChevronRight,
+  Minus,
+  Plus,
+} from "lucide-react"
 import type { ShopifyProduct, ProductVariant } from "@/lib/shopify-types"
 import { useCart } from "@/context/cart"
 
@@ -41,19 +48,27 @@ function QuantitySelector({ quantity, setQuantity }: QuantitySelectorProps) {
     </div>
   )
 }
-// --- End Embedded Component ---
 
 interface ProductClientPageProps {
   product: ShopifyProduct
 }
 
 export default function ProductClientPage({ product }: ProductClientPageProps) {
+  const router = useRouter()
   const [isFavorite, setIsFavorite] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const { addToCart } = useCart()
 
-  // --- VARIANT LOGIC ---
+  const images =
+    product.images && product.images.length > 0
+      ? product.images
+      : [product.image].filter((img): img is string => !!img)
+
+  const nextImage = () => setCurrentImageIndex((i) => (i + 1) % images.length)
+  const prevImage = () =>
+    setCurrentImageIndex((i) => (i - 1 + images.length) % images.length)
+
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
     () => {
       const defaults: Record<string, string> = {}
@@ -75,17 +90,41 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
       )
     })
     setActiveVariant(match || null)
-    setQuantity(1) // Reset quantity when variant changes
-  }, [selectedOptions, product.variants])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const handleOptionSelect = (optionName: string, value: string) => {
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [optionName]: value,
-    }))
-  }
+  const handleOptionSelect = useCallback(
+    (optionName: string, value: string) => {
+      const newSelectedOptions = {
+        ...selectedOptions,
+        [optionName]: value,
+      }
+      setSelectedOptions(newSelectedOptions)
 
-  // --- AVAILABILITY CHECKER ---
+      const match = product.variants.find((variant) => {
+        return Object.entries(newSelectedOptions).every(([name, value]) =>
+          variant.selectedOptions.some(
+            (opt) => opt.name === name && opt.value === value
+          )
+        )
+      })
+      const newActiveVariant = match || null
+      setActiveVariant(newActiveVariant)
+
+      setQuantity(1)
+
+      if (newActiveVariant?.image) {
+        const variantImageIndex = images.findIndex(
+          (img) => img === newActiveVariant.image
+        )
+        if (variantImageIndex !== -1) {
+          setCurrentImageIndex(variantImageIndex)
+        }
+      }
+    },
+    [selectedOptions, product.variants, images]
+  )
+
   const checkAvailability = useCallback(
     (optionName: string, optionValue: string): boolean => {
       const hypotheticalSelection = {
@@ -109,28 +148,6 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
     activeVariant?.compareAtPrice ?? product.originalPrice
   const isAvailable = activeVariant?.availableForSale ?? false
 
-  // --- IMAGE LOGIC ---
-  const images =
-    product.images && product.images.length > 0
-      ? product.images
-      : [product.image].filter((img): img is string => !!img)
-
-  const nextImage = () => setCurrentImageIndex((i) => (i + 1) % images.length)
-  const prevImage = () =>
-    setCurrentImageIndex((i) => (i - 1 + images.length) % images.length)
-
-  useEffect(() => {
-    if (activeVariant?.image) {
-      const variantImageIndex = images.findIndex(
-        (img) => img === activeVariant.image
-      )
-      if (variantImageIndex !== -1) {
-        setCurrentImageIndex(variantImageIndex)
-      }
-    }
-  }, [activeVariant, images])
-
-  // --- ADD TO CART HANDLER ---
   const handleAddToCart = () => {
     if (!activeVariant) {
       console.error("No variant selected")
@@ -157,11 +174,18 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
   return (
     <main className="min-h-screen bg-background">
       <Header />
-
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12">
           {/* Images */}
           <div className="space-y-4">
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/products")}
+            className="mb-8 text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Back to Products
+          </Button>
             <div className="relative aspect-square overflow-hidden rounded-lg bg-secondary">
               {images[currentImageIndex] ? (
                 <Image
@@ -233,7 +257,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
           <div className="space-y-6">
             <div>
               <p className="text-sm uppercase tracking-wide text-muted-foreground mb-2">
-                {product.category || "Product"}
+                {product.collection || "Product"}
               </p>
               <h1 className="font-serif text-4xl font-semibold text-foreground">
                 {product.title}

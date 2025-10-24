@@ -9,6 +9,7 @@ import type {
     ShopifyProductsResponse,
     ShopifyProductByHandleResponse,
     ShopifyRelatedProductsResponse,
+    ShopifyAPIResponse,
 } from "./shopify-types"
 
 import {
@@ -65,13 +66,11 @@ async function shopifyFetch<T>(query: string, variables?: Record<string, unknown
 
 // Transform Shopify product node to app format
 function transformProduct(node: ShopifyProductNode): ShopifyProduct {
-  // --- FIX: Added optional chaining ---
   const price = parseFloat(node?.priceRange?.minVariantPrice?.amount ?? "0")
   const compareAtPrice = parseFloat(
     node?.compareAtPriceRange?.minVariantPrice?.amount ?? "0"
   )
-
-  // Map options (with fallback)
+  const collectionName = node.collections?.edges?.[0]?.node?.title
   const options: ProductOption[] =
     node.options?.map((option) => ({
       id: option.id,
@@ -79,7 +78,6 @@ function transformProduct(node: ShopifyProductNode): ShopifyProduct {
       values: option.values,
     })) ?? []
 
-  // Map variants (with fallback)
   const variants: ProductVariant[] =
     node.variants?.edges?.map((edge) => {
       const variantNode = edge.node
@@ -104,7 +102,6 @@ function transformProduct(node: ShopifyProductNode): ShopifyProduct {
       }
     }) ?? []
 
-  // Get all images
   const images =
     node.images?.edges
       ?.map((edge) => edge?.node?.url)
@@ -115,11 +112,12 @@ function transformProduct(node: ShopifyProductNode): ShopifyProduct {
     handle: node.handle,
     title: node.title,
     description: node.description || "",
-    price, // Minimum price
+    price,
     originalPrice: compareAtPrice > price ? compareAtPrice : undefined,
     image: node.featuredImage?.url || images[0] || "",
     images: images,
     category: node.productType || "Uncategorized",
+    collection: collectionName,
     availableForSale: node.availableForSale ?? false,
     options: options,
     variants: variants,
@@ -279,17 +277,19 @@ export async function getRelatedProducts(productId: string): Promise<ShopifyProd
 export async function createShopifyCheckout(items: { merchandiseId: string; quantity: number }[]) {
   try {
     console.log("Creating Shopify checkout with items:", items);
-    const response = await shopifyFetch(CART_CREATE_MUTATION, { lines: items });
+    const response: ShopifyAPIResponse = await shopifyFetch(CART_CREATE_MUTATION, { lines: items });
+
     console.log("Full Shopify response:", response);
 
     if (!response?.data?.cartCreate) {
-      throw new Error("Shopify response missing 'cartCreate'. Check your mutation or API version.");
+      throw new Error("Shopify response missing 'data.cartCreate'. Check your mutation or API version.");
     }
 
     const { cart, userErrors } = response.data.cartCreate;
 
     if (userErrors && userErrors.length > 0) {
       console.error("Shopify cart creation errors:", userErrors);
+      
       throw new Error(userErrors.map(e => e.message).join(", "));
     }
 

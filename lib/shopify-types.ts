@@ -85,6 +85,13 @@ export interface ShopifyProductNode {
     url: string
     altText?: string
   }
+  collections?: {
+    edges: {
+      node: {
+        title: string
+      }
+    }[]
+  }
   images?: {
     edges: Array<{
       node: {
@@ -119,9 +126,6 @@ export interface ShopifyProductNode {
   tags: string[]
 }
 
-// ==========================
-// Application Types
-// ==========================
 export interface ProductOption {
   id: string
   name: string
@@ -210,24 +214,33 @@ export interface ShopifyCheckout {
   id: string
   webUrl: string
 }
+export interface ShopifyUserError {
+  field?: string[] | null;
+  message: string;
+}
 
 export interface ShopifyCartResponse {
-  cartCreate: {
-    cart: {
-      id: string
-      checkoutUrl?: string // optional because sometimes Shopify may not return it immediately
-      lines: {
-        edges: Array<{
-          node: {
-            id: string
-            quantity: number
-            merchandise: {
-              id: string
-              title: string
-            }
-          }
-        }>
-      }
-    }
-  }
+  cart?: {
+    id: string;
+    checkoutUrl?: string;
+    lines: {
+      edges: Array<{
+        node: {
+          id: string;
+          quantity: number;
+          merchandise: {
+            id: string;
+            title: string;
+          };
+        };
+      }>;
+    };
+  } | null;
+  userErrors?: ShopifyUserError[] | null;
+}
+
+export interface ShopifyAPIResponse {
+  data?: {
+    cartCreate?: ShopifyCartResponse | null;
+  } | null;
 }

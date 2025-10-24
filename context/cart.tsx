@@ -17,11 +17,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
 
-  // Initialize cart from localStorage only on client side
   useEffect(() => {
     try {
       const storedCart = localStorage.getItem(CART_STORAGE_KEY)
       if (storedCart) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCart(JSON.parse(storedCart))
       }
     } catch (error) {
@@ -30,21 +30,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setIsHydrated(true)
   }, [])
 
-  // Save to localStorage whenever cart changes
   useEffect(() => {
-    if (isHydrated) {
-      try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart))
-      } catch (error) {
-        console.error("Failed to save cart to localStorage:", error)
-      }
+    if (!isHydrated) {
+      return
+    }
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart))
+    } catch (error) {
+      console.error("Failed to save cart to localStorage:", error)
     }
   }, [cart, isHydrated])
 
   const addToCart = (itemToAdd: CartItem): void => {
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.variantId === itemToAdd.variantId)
-      
+      const existingItem = prevCart.find(
+        (item) => item.variantId === itemToAdd.variantId
+      )
+
       if (existingItem) {
         return prevCart.map((item) =>
           item.variantId === itemToAdd.variantId
@@ -74,8 +76,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const checkout = async (): Promise<void> => {
+    console.log("Initiating checkout with cart:", cart)
+
+    const lineItems = cart.map((item) => {
+      return {
+        variantId: item.variantId,
+        quantity: item.quantity,
+      }
+    })
+
+    if (lineItems.length === 0) {
+      alert("Your cart is empty.")
+      return
+    }
+  }
+
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
-  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const totalPrice = cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  )
   const isEmpty = cart.length === 0
 
   const value: CartContextType = {
@@ -86,13 +107,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     cartCount,
     totalPrice,
     isEmpty,
+    checkout,
   }
 
-  return (
-    <CartContext.Provider value={value}>
-      {children}
-    </CartContext.Provider>
-  )
+  if (!isHydrated) {
+    return null
+  }
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
 
 export function useCart(): CartContextType {

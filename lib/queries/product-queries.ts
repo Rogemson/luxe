@@ -15,6 +15,13 @@ export const GET_PRODUCTS_QUERY = `
               currencyCode
             }
           }
+          collections(first: 1) {
+            edges {
+              node {
+                title
+              }
+            }
+          }
           featuredImage {
             url
             altText
@@ -42,6 +49,14 @@ export const GET_PRODUCT_BY_HANDLE_QUERY = `
       featuredImage {
         url
         altText
+      }
+
+      collections(first: 1) {
+        edges {
+          node {
+            title
+          }
+        }
       }
 
       images(first: 10) {

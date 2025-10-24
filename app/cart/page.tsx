@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, ShoppingBag } from "lucide-react"
 import { CartItem } from "@/components/cart-item"
 import { CartSummary } from "@/components/cart-summary"
 import { Button } from "@/components/ui/button"
@@ -63,6 +63,7 @@ export default function CartPage() {
 
         {isEmpty ? (
           <div className="text-center py-16">
+            <ShoppingBag className="mx-auto mb-4 w-20 h-20 text-muted-foreground" />
             <p className="text-lg text-muted-foreground mb-6">Your cart is empty</p>
             <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Link href="/products">Continue Shopping</Link>

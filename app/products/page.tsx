@@ -65,7 +65,7 @@ export default async function ProductsPage() {
                     title={product.title}
                     price={product.price}
                     image={product.image}
-                    category={product.category}
+                    category={product.collection}
                     index={index}
                 />
                 ))}
