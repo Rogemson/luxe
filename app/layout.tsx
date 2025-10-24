@@ -4,6 +4,7 @@ import { Playfair_Display, Inter } from "next/font/google"
 import "./globals.css"
 import { CartProvider } from "@/context/cart"
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { AuthProvider } from "@/context/auth"
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -29,10 +30,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <body className="font-sans antialiased">
-        <CartProvider>
-          {children}
-          <SpeedInsights />
-        </CartProvider>{" "}
+        <AuthProvider>
+          <CartProvider>
+            {children}
+            <SpeedInsights />
+          </CartProvider>{" "}
+        </AuthProvider>
       </body>
     </html>
   )
