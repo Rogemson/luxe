@@ -76,7 +76,8 @@ export default function ProductsPage() {
               {filteredAndSortedProducts.length === 1 ? "product" : "products"}
             </p>
 
-            <div className="flex flex-wrap gap-3 items-center lg:hidden">
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Sort Dropdown */}
               <Select 
                 value={filters.sortBy} 
                 onValueChange={(value) => 
@@ -132,6 +133,7 @@ export default function ProductsPage() {
                       image={product.image}
                       category={product.collection}
                       index={index}
+                      product={product}
                     />
                   ))}
                 </div>

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
-import { PriceDisplay } from "@/components/sale-badge"  // Add this import
+import { PriceDisplay } from "@/components/sale-badge"
 import {
   Heart,
   Share2,
@@ -14,8 +14,9 @@ import {
   Minus,
   Plus,
 } from "lucide-react"
-import type { ShopifyProduct, ProductVariant } from "@/lib/shopify-types"
+import type { ShopifyProduct } from "@/lib/shopify-types"
 import { useCart } from "@/context/cart"
+import { useProductVariants } from "@/hooks/useProductVariants"
 
 interface QuantitySelectorProps {
   quantity: number
@@ -61,6 +62,10 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
   const [addedToCart, setAddedToCart] = useState(false)
   const { addToCart } = useCart()
 
+  // Use the shared hook for variant management
+  const { selectedOptions, activeVariant, handleOptionSelect, checkAvailability } = 
+    useProductVariants(product)
+
   const images =
     product.images && product.images.length > 0
       ? product.images
@@ -70,79 +75,19 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
   const prevImage = () =>
     setCurrentImageIndex((i) => (i - 1 + images.length) % images.length)
 
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
-    () => {
-      const defaults: Record<string, string> = {}
-      product.options.forEach((option) => {
-        defaults[option.name] = option.values[0]
-      })
-      return defaults
-    }
-  )
+  const handleOptionChange = (optionName: string, value: string) => {
+    const newVariant = handleOptionSelect(optionName, value)
+    setQuantity(1)
 
-  const [activeVariant, setActiveVariant] = useState<ProductVariant | null>(null)
-
-  useEffect(() => {
-    const match = product.variants.find((variant) => {
-      return Object.entries(selectedOptions).every(([name, value]) =>
-        variant.selectedOptions.some(
-          (opt) => opt.name === name && opt.value === value
-        )
+    if (newVariant?.image) {
+      const variantImageIndex = images.findIndex(
+        (img) => img === newVariant.image
       )
-    })
-    setActiveVariant(match || null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const handleOptionSelect = useCallback(
-    (optionName: string, value: string) => {
-      const newSelectedOptions = {
-        ...selectedOptions,
-        [optionName]: value,
+      if (variantImageIndex !== -1) {
+        setCurrentImageIndex(variantImageIndex)
       }
-      setSelectedOptions(newSelectedOptions)
-
-      const match = product.variants.find((variant) => {
-        return Object.entries(newSelectedOptions).every(([name, value]) =>
-          variant.selectedOptions.some(
-            (opt) => opt.name === name && opt.value === value
-          )
-        )
-      })
-      const newActiveVariant = match || null
-      setActiveVariant(newActiveVariant)
-
-      setQuantity(1)
-
-      if (newActiveVariant?.image) {
-        const variantImageIndex = images.findIndex(
-          (img) => img === newActiveVariant.image
-        )
-        if (variantImageIndex !== -1) {
-          setCurrentImageIndex(variantImageIndex)
-        }
-      }
-    },
-    [selectedOptions, product.variants, images]
-  )
-
-  const checkAvailability = useCallback(
-    (optionName: string, optionValue: string): boolean => {
-      const hypotheticalSelection = {
-        ...selectedOptions,
-        [optionName]: optionValue,
-      }
-      const matchingVariant = product.variants.find((variant) => {
-        return Object.entries(hypotheticalSelection).every(([name, value]) =>
-          variant.selectedOptions.some(
-            (opt) => opt.name === name && opt.value === value
-          )
-        )
-      })
-      return matchingVariant?.availableForSale ?? false
-    },
-    [selectedOptions, product.variants]
-  )
+    }
+  }
 
   const displayPrice = activeVariant?.price ?? product.price
   const displayOriginalPrice =
@@ -265,7 +210,6 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                 {product.title}
               </h1>
               
-              {/* REPLACE the price section with PriceDisplay */}
               <div className="mt-4">
                 <PriceDisplay
                   currentPrice={displayPrice}
@@ -295,7 +239,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                       return (
                         <button
                           key={value}
-                          onClick={() => handleOptionSelect(option.name, value)}
+                          onClick={() => handleOptionChange(option.name, value)}
                           disabled={!isOptionAvailable}
                           className={`px-4 py-2 border rounded-md text-sm font-medium transition ${
                             isSelected
