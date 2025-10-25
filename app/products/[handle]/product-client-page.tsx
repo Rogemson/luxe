@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { PriceDisplay } from "@/components/sale-badge"  // Add this import
 import {
@@ -175,7 +174,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="bg-background">
       <Header />
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12">
@@ -372,8 +371,6 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
           </div>
         </div>
       </section>
-
-      <Footer />
     </main>
   )
 }
