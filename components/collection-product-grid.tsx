@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo } from "react"
 import { ProductCard } from "@/components/product-card"
+import { ProductFilters } from "@/components/product-filters"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useFilters } from '@/context/filters'
 import { ShopifyProduct } from "@/lib/shopify-types"
 
 interface CollectionProductGridProps {
@@ -10,97 +12,97 @@ interface CollectionProductGridProps {
 }
 
 export function CollectionProductGrid({ products }: CollectionProductGridProps) {
-  const [sortOption, setSortOption] = useState<string>("default")
-  const [filterCategory, setFilterCategory] = useState<string>("all")
+  const { filters, setFilters, applyFilters } = useFilters()
 
+  // Apply filters and sorting
+  const filteredAndSortedProducts = useMemo(() => {
+    const filtered = applyFilters(products)
+
+    switch (filters.sortBy) {
+      case 'price-asc':
+        return [...filtered].sort((a, b) => a.price - b.price)
+      case 'price-desc':
+        return [...filtered].sort((a, b) => b.price - a.price)
+      case 'newest':
+        return filtered
+      case 'popular':
+        return filtered
+      default:
+        return filtered
+    }
+  }, [products, filters, applyFilters])
+
+  // Get unique categories and max price for filter sidebar
   const categories = useMemo(() => {
-    const unique = Array.from(new Set(products.map((p) => p.category)))
-    return ["all", ...unique]
+    return Array.from(new Set(products.map((p) => p.category)))
   }, [products])
 
-  const filteredAndSortedProducts = useMemo(() => {
-    let visible = [...products]
-
-    if (filterCategory !== "all") {
-      visible = visible.filter((p) => p.category === filterCategory)
-    }
-
-    switch (sortOption) {
-      case "price-asc":
-        visible.sort((a, b) => a.price - b.price)
-        break
-      case "price-desc":
-        visible.sort((a, b) => b.price - a.price)
-        break
-      case "alpha-asc":
-        visible.sort((a, b) => a.title.localeCompare(b.title))
-        break
-      case "alpha-desc":
-        visible.sort((a, b) => b.title.localeCompare(a.title))
-        break
-      default:
-        break
-    }
-
-    return visible
-  }, [products, sortOption, filterCategory])
+  const maxPrice = useMemo(() => {
+    return Math.max(...products.map((p) => p.price), 1000)
+  }, [products])
 
   return (
     <div>
+      {/* Filter Bar - Mobile Only */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-12 pb-6 border-b border-border">
         <p className="text-sm text-foreground/60">
-          Showing {filteredAndSortedProducts.length}{" "}
+          Showing {filteredAndSortedProducts.length} of {products.length}{" "}
           {filteredAndSortedProducts.length === 1 ? "product" : "products"}
         </p>
 
-        <div className="flex gap-3 items-center">
-          <Select value={sortOption} onValueChange={setSortOption}>
+        {/* Sort Dropdown - Mobile Only */}
+        <div className="flex gap-3 items-center lg:hidden">
+          <Select 
+            value={filters.sortBy} 
+            onValueChange={(value) => 
+              setFilters({ ...filters, sortBy: value as typeof filters.sortBy })
+            }
+          >
             <SelectTrigger className="w-[180px] bg-transparent border-border text-foreground">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">Default</SelectItem>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="popular">Popular</SelectItem>
               <SelectItem value="price-asc">Price: Low → High</SelectItem>
               <SelectItem value="price-desc">Price: High → Low</SelectItem>
-              <SelectItem value="alpha-asc">Alphabetical: A → Z</SelectItem>
-              <SelectItem value="alpha-desc">Alphabetical: Z → A</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-[180px] bg-transparent border-border text-foreground">
-              <SelectValue placeholder="Filter by" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat === "all" ? "All Categories" : cat}
-                </SelectItem>
-              ))}
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* Product Grid */}
-      {filteredAndSortedProducts.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-foreground/60 text-lg">No products found.</p>
+      {/* Main Content with Sidebar */}
+      <div className="flex gap-8">
+        {/* Filter Sidebar - Desktop */}
+        <ProductFilters categories={categories} maxPrice={maxPrice} />
+
+        {/* Products Grid */}
+        <div className="flex-1">
+          {filteredAndSortedProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-foreground/60 text-lg">No products match your filters.</p>
+              <p className="text-foreground/60 text-sm mt-2">
+                Try adjusting your filters to see more results.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+              {filteredAndSortedProducts.map((product, index) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.handle}
+                  title={product.title}
+                  price={product.price}
+                  compareAtPrice={product.compareAtPrice}
+                  image={product.image}
+                  category={product.category}
+                  index={index}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredAndSortedProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              id={product.handle}
-              title={product.title}
-              price={product.price}
-              image={product.image}
-              category={product.category}
-            />
-          ))}
-        </div>
-      )}
+      </div>
     </div>
   )
 }
