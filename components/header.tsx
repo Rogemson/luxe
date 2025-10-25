@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Menu, X, ShoppingCart, Search, User } from 'lucide-react'
+import { Menu, X, Search, User } from 'lucide-react'
 import Link from 'next/link'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useCart } from '@/context/cart'
 import { useSearch } from '@/context/search'
 import { SearchModal } from '@/components/search-modal'
+import { CartDrawer } from '@/components/cart-drawer'
+import { MegaMenu } from '@/components/mega-menu' // ✅ Add this
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -21,7 +23,6 @@ export function Header() {
   useEffect(() => {
     const email = localStorage.getItem('customerEmail') || ''
     const authToken = localStorage.getItem('shopifyCustomerToken') || ''
-
     Promise.resolve().then(() => {
       setClientState({
         mounted: true,
@@ -49,60 +50,10 @@ export function Header() {
 
   if (!clientState.mounted) {
     return (
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <Link href="/" className="flex items-center gap-3">
-              <span className="font-serif text-2xl font-semibold text-foreground tracking-tight">
-                LUXE
-              </span>
-            </Link>
-            <nav className="hidden md:flex items-center gap-12">
-              <Link
-                href="/collections"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                Collections
-              </Link>
-              <Link
-                href="/products"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                Shop
-              </Link>
-              <a
-                href="#"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                About
-              </a>
-              <a
-                href="#"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                Contact
-              </a>
-            </nav>
-            <div className="flex items-center gap-6">
-              <button className="p-2 text-foreground hover:text-accent transition-colors">
-                <Search className="w-5 h-5" />
-              </button>
-              <Link
-                href="/cart"
-                className="relative p-2 text-foreground hover:text-accent transition-colors"
-              >
-                <ShoppingCart className="w-5 h-5" />
-              </Link>
-              <Link
-                href="/account"
-                className="p-2 text-foreground hover:text-accent transition-colors"
-              >
-                <User className="w-5 h-5" />
-              </Link>
-              <button className="md:hidden p-2 text-foreground">
-                <Menu className="w-5 h-5" />
-              </button>
-            </div>
+      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="h-8 w-24 bg-secondary animate-pulse rounded" />
           </div>
         </div>
       </header>
@@ -111,87 +62,73 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={closeSearch}
+        products={products}
+      />
+
+      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-3">
-              <span className="font-serif text-2xl font-semibold text-foreground tracking-tight">
-                LUXE
-              </span>
+            <Link href="/" className="font-serif text-2xl font-bold">
+              Zoster
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-12">
-              <Link
-                href="/collections"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
+            {/* Desktop Navigation with Mega Menu */}
+            <nav className="hidden md:flex items-center gap-6">
+              <Link href="/" className="text-sm font-medium hover:text-primary transition-colors">
+                Home
+              </Link>
+              
+              {/* ✅ Mega Menu */}
+              <MegaMenu />
+              
+              <Link href="/collections" className="text-sm font-medium hover:text-primary transition-colors">
                 Collections
               </Link>
-              <Link
-                href="/products"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                Shop
-              </Link>
-              <a
-                href="#"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
+              <Link href="/about" className="text-sm font-medium hover:text-primary transition-colors">
                 About
-              </a>
-              <a
-                href="#"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                Contact
-              </a>
+              </Link>
             </nav>
 
-            {/* Right Actions */}
-            <div className="flex items-center gap-4">
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              {/* Search */}
               <button
                 onClick={openSearch}
-                className="p-2 text-foreground hover:text-accent transition-colors"
+                className="p-2 hover:bg-secondary rounded-full transition-colors"
+                aria-label="Search"
               >
                 <Search className="w-5 h-5" />
               </button>
-              <Link
-                href="/cart"
-                className="relative p-2 text-foreground hover:text-accent transition-colors"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {cartCount > 0 && (
-                  <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold bg-primary text-white">
-                    {cartCount}
-                  </span>
-                )}
-              </Link>
 
+              {/* Cart Drawer */}
+              <CartDrawer />
+
+              {/* User */}
               {isLoggedIn ? (
-                <Link
-                  href="/account"
-                  className="p-2 text-foreground hover:text-accent transition-colors"
-                >
-                  <Avatar className="w-8 h-8 cursor-pointer">
-                    <AvatarFallback className="text-xs font-semibold bg-accent text-accent-foreground">
+                <Link href="/account">
+                  <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 hover:ring-primary transition-all">
+                    <AvatarFallback className="text-xs">
                       {getInitials(clientState.email)}
                     </AvatarFallback>
                   </Avatar>
                 </Link>
               ) : (
-                <Link
-                  href="/account"
-                  className="p-2 text-foreground hover:text-accent transition-colors"
-                >
-                  <User className="w-5 h-5" />
+                <Link href="/account/login">
+                  <button className="p-2 hover:bg-secondary rounded-full transition-colors">
+                    <User className="w-5 h-5" />
+                  </button>
                 </Link>
               )}
 
+              {/* Mobile Menu */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="md:hidden p-2 text-foreground"
+                className="md:hidden p-2 hover:bg-secondary rounded-full transition-colors"
               >
                 {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -200,38 +137,41 @@ export function Header() {
 
           {/* Mobile Navigation */}
           {isOpen && (
-            <nav className="md:hidden pb-6 flex flex-col gap-4 border-t border-border pt-4">
-              <Link
-                href="/collections"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                Collections
-              </Link>
-              <Link
-                href="/products"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                Shop
-              </Link>
-              <a
-                href="#"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                About
-              </a>
-              <a
-                href="#"
-                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
-              >
-                Contact
-              </a>
-            </nav>
+            <div className="md:hidden border-t border-border">
+              <nav className="flex flex-col p-4 space-y-4">
+                <Link 
+                  href="/" 
+                  className="text-sm font-medium hover:text-primary transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Home
+                </Link>
+                <Link 
+                  href="/products" 
+                  className="text-sm font-medium hover:text-primary transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Products
+                </Link>
+                <Link 
+                  href="/collections" 
+                  className="text-sm font-medium hover:text-primary transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Collections
+                </Link>
+                <Link 
+                  href="/about" 
+                  className="text-sm font-medium hover:text-primary transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  About
+                </Link>
+              </nav>
+            </div>
           )}
         </div>
       </header>
-
-      {/* Search Modal */}
-      <SearchModal products={products} isOpen={isSearchOpen} onClose={closeSearch} />
     </>
   )
 }
