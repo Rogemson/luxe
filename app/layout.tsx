@@ -5,7 +5,8 @@ import "./globals.css"
 import { CartProvider } from "@/context/cart"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { WishlistProvider } from '@/context/wishlist'
-import { SearchProvider } from '@/context/search'  // Add this
+import { SearchProvider } from '@/context/search'
+import { ProductsLoader } from '@/components/products-loader'  // Add this import
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -33,7 +34,8 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <CartProvider>
           <WishlistProvider>
-            <SearchProvider>  {/* Add this wrapper */}
+            <SearchProvider>
+              <ProductsLoader />  {/* Add this - loads products globally */}
               {children}
             </SearchProvider>
           </WishlistProvider>
