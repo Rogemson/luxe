@@ -7,6 +7,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import { WishlistProvider } from '@/context/wishlist'
 import { SearchProvider } from '@/context/search'
 import { ProductsLoader } from '@/components/products-loader'
+import { FiltersProvider } from '@/context/filters'
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -24,25 +25,18 @@ export const metadata: Metadata = {
   description: "Discover our curated collection of premium clothing designed for the modern lifestyle.",
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const shopifyDomain = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL || ''
 
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <head>
-        {/* ✅ Prefetch Shopify domain */}
         {shopifyDomain && (
           <>
             <link rel="dns-prefetch" href={`https://${shopifyDomain}`} />
             <link rel="preconnect" href={`https://${shopifyDomain}`} crossOrigin="anonymous" />
           </>
         )}
-        
-        {/* ✅ Prefetch Shopify CDN */}
         <link rel="dns-prefetch" href="https://cdn.shopify.com" />
         <link rel="preconnect" href="https://cdn.shopify.com" crossOrigin="anonymous" />
       </head>
@@ -50,8 +44,10 @@ export default function RootLayout({
         <CartProvider>
           <WishlistProvider>
             <SearchProvider>
-              <ProductsLoader />
-              {children}
+              <FiltersProvider>  {/* Add this wrapper */}
+                <ProductsLoader />
+                {children}
+              </FiltersProvider>
             </SearchProvider>
           </WishlistProvider>
           <SpeedInsights />
