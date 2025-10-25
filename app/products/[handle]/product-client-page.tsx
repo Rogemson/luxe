@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
+import { PriceDisplay } from "@/components/sale-badge"  // Add this import
 import {
   Heart,
   Share2,
@@ -24,7 +25,7 @@ interface QuantitySelectorProps {
 
 function QuantitySelector({ quantity, setQuantity }: QuantitySelectorProps) {
   const increment = () => setQuantity(quantity + 1)
-  const decrement = () => setQuantity(Math.max(1, quantity - 1)) // Prevent going below 1
+  const decrement = () => setQuantity(Math.max(1, quantity - 1))
 
   return (
     <div className="flex items-center gap-2">
@@ -146,7 +147,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
 
   const displayPrice = activeVariant?.price ?? product.price
   const displayOriginalPrice =
-    activeVariant?.compareAtPrice ?? product.originalPrice
+    activeVariant?.compareAtPrice ?? product.compareAtPrice
   const isAvailable = activeVariant?.availableForSale ?? false
 
   const handleAddToCart = () => {
@@ -169,11 +170,9 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
       variantTitle: variantTitle,
     })
     
-    // Show "Added to cart!" temporarily
     setAddedToCart(true)
     setTimeout(() => setAddedToCart(false), 1000)
   }
-
 
   return (
     <main className="min-h-screen bg-background">
@@ -266,14 +265,15 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
               <h1 className="font-serif text-4xl font-semibold text-foreground">
                 {product.title}
               </h1>
-              <p className="text-xl font-medium text-foreground mt-2">
-                ${displayPrice.toFixed(2)}
-              </p>
-              {displayOriginalPrice && displayOriginalPrice > displayPrice && (
-                <p className="text-sm text-muted-foreground line-through">
-                  ${displayOriginalPrice.toFixed(2)}
-                </p>
-              )}
+              
+              {/* REPLACE the price section with PriceDisplay */}
+              <div className="mt-4">
+                <PriceDisplay
+                  currentPrice={displayPrice}
+                  compareAtPrice={displayOriginalPrice}
+                  showBadge={true}
+                />
+              </div>
             </div>
 
             <p className="text-foreground/70 leading-relaxed">
@@ -315,7 +315,6 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
               ))}
             </div>
 
-            {/* --- 2. Using the embedded QuantitySelector --- */}
             <div className="pt-4">
               <p className="font-medium mb-2">Quantity</p>
               <QuantitySelector
@@ -323,7 +322,6 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                 setQuantity={setQuantity}
               />
             </div>
-            {/* --- End Quantity Selector --- */}
 
             <div className="flex gap-3 pt-4">
               <Button

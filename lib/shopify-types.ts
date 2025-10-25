@@ -152,7 +152,7 @@ export interface ShopifyProduct {
   title: string
   description: string
   price: number
-  originalPrice?: number
+  compareAtPrice?: number
   image: string
   images: string[]
   category: string

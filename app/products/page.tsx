@@ -112,6 +112,7 @@ export default function ProductsPage() {
                   id={product.handle}
                   title={product.title}
                   price={product.price}
+                  compareAtPrice={product.compareAtPrice}
                   image={product.image}
                   category={product.collection}
                   index={index}

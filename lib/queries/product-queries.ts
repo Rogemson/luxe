@@ -13,6 +13,11 @@ export const GET_PRODUCTS_QUERY = `
               currencyCode
             }
           }
+          compareAtPriceRange {
+            minVariantPrice {
+              amount
+            }
+          }
           collections(first: 1) {
             edges {
               node {

@@ -113,7 +113,7 @@ function transformProduct(node: ShopifyProductNode): ShopifyProduct {
     title: node.title,
     description: node.description || "",
     price,
-    originalPrice: compareAtPrice > price ? compareAtPrice : undefined,
+    compareAtPrice: compareAtPrice > price ? compareAtPrice : undefined,  // ✅ Changed from originalPrice
     image: node.featuredImage?.url || images[0] || "",
     images: images,
     category: node.productType || "Uncategorized",
@@ -123,6 +123,7 @@ function transformProduct(node: ShopifyProductNode): ShopifyProduct {
     variants: variants,
   }
 }
+
 
 // Get all collections
 export async function getCollections(): Promise<ShopifyCollection[]> {
