@@ -31,8 +31,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('👤 [CUSTOMER] Fetching customer data...')
-
     const result = await shopifyFetch<ShopifyCustomerQueryResponse>(GET_CUSTOMER, {
       token
     })
@@ -41,7 +39,6 @@ export async function POST(request: NextRequest) {
     const errors = result.errors
 
     if (errors) {
-      console.error('❌ [CUSTOMER] Error:', errors)
       return NextResponse.json(
         { error: 'Failed to fetch customer' },
         { status: 400 }
@@ -49,21 +46,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (!customer) {
-      console.error('❌ [CUSTOMER] No customer found')
       return NextResponse.json(
         { error: 'Customer not found' },
         { status: 404 }
       )
     }
 
-    console.log('✅ [CUSTOMER] Fetched:', customer.email)
-
     return NextResponse.json({
       customer
     })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
-    console.error('❌ [CUSTOMER] Exception:', errorMessage)
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }
