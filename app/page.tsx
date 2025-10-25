@@ -46,6 +46,7 @@ export default async function HomePage() {
                   <Link
                     key={collection.id}
                     href={`/collections/${collection.handle}`}
+                    prefetch={false}
                     className="group"
                   >
                     <div className="relative aspect-square overflow-hidden rounded-lg mb-4">
