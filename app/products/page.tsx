@@ -6,20 +6,24 @@ import { Footer } from "@/components/footer"
 import { ProductCard } from "@/components/product-card"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { getProducts } from "@/lib/shopify-client"
+import { useSearch } from '@/context/search'
 import type { ShopifyProduct } from "@/lib/shopify-types"
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ShopifyProduct[]>([])
+  const { setProducts: setSearchProducts } = useSearch()
   const [sortBy, setSortBy] = useState<string>("")
   const [filter] = useState<string>("all")
 
   useEffect(() => {
     const fetchData = async () => {
       const data = await getProducts(30)
+      console.log('Products fetched:', data.length)  // Add this
       setProducts(data)
+      setSearchProducts(data)  // This populates search context
     }
     fetchData()
-  }, [])
+  }, [setSearchProducts])
 
   // Apply sorting and filtering dynamically
   const filteredAndSortedProducts = useMemo(() => {
