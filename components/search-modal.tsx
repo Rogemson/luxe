@@ -140,7 +140,7 @@ export function SearchModal({ products, isOpen, onClose }: SearchModalProps) {
                       index === selectedIndex ? 'bg-secondary' : ''
                     }`}
                   >
-                    <div className="relative w-16 h-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                    <div className="relative w-16 h-16 rounded-md overflow-hidden bg-muted shrink-0">
                       <Image
                         src={product.image || '/placeholder.svg'}
                         alt={product.title}
@@ -157,7 +157,7 @@ export function SearchModal({ products, isOpen, onClose }: SearchModalProps) {
                         {product.category}
                       </p>
                     </div>
-                    <div className="text-right flex-shrink-0">
+                    <div className="text-right shrink-0">
                       <p className="font-semibold text-foreground">
                         ${product.price.toFixed(2)}
                       </p>

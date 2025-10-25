@@ -7,7 +7,6 @@ import { ProductCard } from "@/components/product-card"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { getProducts } from "@/lib/shopify-client"
 import { useSearch } from '@/context/search'
-import { RelatedProducts } from '@/components/related-products'
 import type { ShopifyProduct } from "@/lib/shopify-types"
 
 export default function ProductsPage() {

@@ -6,7 +6,7 @@ import { CartProvider } from "@/context/cart"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { WishlistProvider } from '@/context/wishlist'
 import { SearchProvider } from '@/context/search'
-import { ProductsLoader } from '@/components/products-loader'  // Add this import
+import { ProductsLoader } from '@/components/products-loader'
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -29,13 +29,28 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const shopifyDomain = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL || ''
+
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
+      <head>
+        {/* ✅ Prefetch Shopify domain */}
+        {shopifyDomain && (
+          <>
+            <link rel="dns-prefetch" href={`https://${shopifyDomain}`} />
+            <link rel="preconnect" href={`https://${shopifyDomain}`} crossOrigin="anonymous" />
+          </>
+        )}
+        
+        {/* ✅ Prefetch Shopify CDN */}
+        <link rel="dns-prefetch" href="https://cdn.shopify.com" />
+        <link rel="preconnect" href="https://cdn.shopify.com" crossOrigin="anonymous" />
+      </head>
       <body className="font-sans antialiased">
         <CartProvider>
           <WishlistProvider>
             <SearchProvider>
-              <ProductsLoader />  {/* Add this - loads products globally */}
+              <ProductsLoader />
               {children}
             </SearchProvider>
           </WishlistProvider>
