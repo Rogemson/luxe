@@ -1,8 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Package, Calendar, DollarSign, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+
+interface OrderItem {
+  id: string
+  title: string
+  quantity: number
+  variantTitle: string
+  image?: string
+}
 
 interface Order {
   id: string
@@ -11,10 +20,15 @@ interface Order {
   total: string
   currency: string
   status: string
-  items: any[]
+  items: OrderItem[]
 }
 
-export function AccountOrders({ email }: { email: string }) {
+interface OrdersApiResponse {
+  orders?: Order[]
+  error?: string
+}
+
+export function AccountOrders() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
@@ -38,7 +52,7 @@ export function AccountOrders({ email }: { email: string }) {
           body: JSON.stringify({ token })
         })
 
-        const data = await response.json()
+        const data: OrdersApiResponse = await response.json()
 
         if (response.ok && data.orders) {
           setOrders(data.orders)
@@ -115,14 +129,18 @@ export function AccountOrders({ email }: { email: string }) {
                   <div>
                     <p className="text-sm font-medium mb-3">Items</p>
                     <div className="space-y-2">
-                      {order.items.map((item: any) => (
+                      {order.items.map((item: OrderItem) => (
                         <div key={item.id} className="flex items-start gap-4">
                           {item.image && (
-                            <img 
-                              src={item.image} 
-                              alt={item.title}
-                              className="w-12 h-12 rounded object-cover"
-                            />
+                            <div className="relative w-12 h-12 rounded overflow-hidden">
+                              <Image 
+                                src={item.image} 
+                                alt={item.title}
+                                fill
+                                sizes="48px"
+                                className="object-cover"
+                              />
+                            </div>
                           )}
                           <div className="flex-1">
                             <p className="text-sm font-medium">{item.title}</p>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { shopifyFetch } from '@/lib/shopify-client'
+import { ShopifyCustomerAccessTokenCreateResponse } from '@/lib/shopify-types'
 
 const CUSTOMER_LOGIN = `
   mutation customerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
@@ -27,12 +28,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await shopifyFetch(CUSTOMER_LOGIN, {
+    const result = await shopifyFetch<ShopifyCustomerAccessTokenCreateResponse>(CUSTOMER_LOGIN, {
       input: { email, password }
     })
 
-    const token = (result as any).data?.customerAccessTokenCreate?.customerAccessToken?.accessToken
-    const errors = (result as any).data?.customerAccessTokenCreate?.userErrors
+    const token = result.data?.customerAccessTokenCreate?.customerAccessToken?.accessToken
+    const errors = result.data?.customerAccessTokenCreate?.userErrors
 
     if (errors && errors.length > 0) {
       return NextResponse.json(
@@ -52,10 +53,10 @@ export async function POST(request: NextRequest) {
       success: true,
       token
     })
-
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

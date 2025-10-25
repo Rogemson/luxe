@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { shopifyFetch } from '@/lib/shopify-client'
+import { ShopifyCustomerQueryResponse } from '@/lib/shopify-types'
 
 const GET_CUSTOMER = `
   query getCustomer($token: String!) {
@@ -32,12 +33,12 @@ export async function POST(request: NextRequest) {
 
     console.log('👤 [CUSTOMER] Fetching customer data...')
 
-    const result = await shopifyFetch(GET_CUSTOMER, {
+    const result = await shopifyFetch<ShopifyCustomerQueryResponse>(GET_CUSTOMER, {
       token
     })
 
-    const customer = (result as any).data?.customer
-    const errors = (result as any).errors
+    const customer = result.data?.customer
+    const errors = result.errors
 
     if (errors) {
       console.error('❌ [CUSTOMER] Error:', errors)
@@ -60,11 +61,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       customer
     })
-
-  } catch (error: any) {
-    console.error('❌ [CUSTOMER] Exception:', error.message)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+    console.error('❌ [CUSTOMER] Exception:', errorMessage)
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

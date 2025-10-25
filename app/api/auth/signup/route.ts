@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { shopifyFetch } from '@/lib/shopify-client'
+import { ShopifyCustomerCreateResponse } from '@/lib/shopify-types'
 
 const CREATE_CUSTOMER = `
   mutation createCustomer($input: CustomerCreateInput!) {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await shopifyFetch(CREATE_CUSTOMER, {
+    const result = await shopifyFetch<ShopifyCustomerCreateResponse>(CREATE_CUSTOMER, {
       input: {
         email,
         firstName,
@@ -36,8 +37,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    const customer = (result as any).data?.customerCreate?.customer
-    const errors = (result as any).data?.customerCreate?.userErrors
+    const customer = result.data?.customerCreate?.customer
+    const errors = result.data?.customerCreate?.userErrors
 
     if (errors && errors.length > 0) {
       return NextResponse.json(
@@ -57,10 +58,10 @@ export async function POST(request: NextRequest) {
       success: true,
       customerId: customer.id
     })
-
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

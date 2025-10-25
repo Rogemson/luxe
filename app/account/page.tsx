@@ -18,18 +18,25 @@ export default function AccountPage() {
 
   // Check authentication on mount
   useEffect(() => {
-    const storedEmail = localStorage.getItem('customerEmail')
-    const token = localStorage.getItem('shopifyCustomerToken')
+    const checkAuth = () => {
+      const storedEmail = localStorage.getItem('customerEmail')
+      const token = localStorage.getItem('shopifyCustomerToken')
 
-    if (!storedEmail || !token) {
-      router.push('/login')
-      return
+      if (!storedEmail || !token) {
+        router.push('/login')
+        return
+      }
+
+      console.log('👤 [ACCOUNT] User authenticated:', storedEmail)
+      setTimeout(() => {
+        setEmail(storedEmail)
+        setLoading(false)
+      }, 0)
     }
 
-    console.log('👤 [ACCOUNT] User authenticated:', storedEmail)
-    setEmail(storedEmail)
-    setLoading(false)
+    checkAuth()
   }, [router])
+
 
   const handleLogout = () => {
     localStorage.removeItem('shopifyCustomerToken')
@@ -42,7 +49,7 @@ export default function AccountPage() {
       case 'profile':
         return <AccountProfile email={email} />
       case 'orders':
-        return <AccountOrders email={email} />
+        return <AccountOrders />
       case 'wishlist':
         return <AccountWishlist />
       case 'settings':

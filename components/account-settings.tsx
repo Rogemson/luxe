@@ -3,7 +3,12 @@
 import { Bell, MessageSquare, Lock, Shield, Smartphone, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export function AccountSettings() {
+interface AccountSettingsProps {
+  email: string
+  onLogout: () => void
+}
+
+export function AccountSettings({ email, onLogout }: AccountSettingsProps) {
   return (
     <div className="space-y-6">
       <div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, Mail, Phone, MapPin, Edit2, X } from 'lucide-react'
+import { Mail, Phone, MapPin, Edit2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 interface CustomerData {

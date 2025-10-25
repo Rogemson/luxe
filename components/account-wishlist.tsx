@@ -1,7 +1,9 @@
-"use client"
+'use client'
 
-import { Heart } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { Heart } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface WishlistItem {
   id: string
@@ -10,22 +12,81 @@ interface WishlistItem {
   image: string
 }
 
-const wishlistItems: WishlistItem[] = [
-  {
-    id: "1",
-    name: "Premium Cotton T-Shirt",
-    price: 49.99,
-    image: "/cotton-tshirt.jpg",
-  },
-  {
-    id: "2",
-    name: "Classic Denim Jeans",
-    price: 89.99,
-    image: "/denim-jeans.jpg",
-  },
-]
+interface WishlistApiResponse {
+  wishlist?: WishlistItem[]
+  error?: string
+}
 
 export function AccountWishlist() {
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      try {
+        const token = localStorage.getItem('shopifyCustomerToken')
+
+        if (!token) {
+          setWishlistItems([])
+          setLoading(false)
+          return
+        }
+
+        console.log('❤️ [WISHLIST] Fetching wishlist...')
+
+        const response = await fetch('/api/auth/wishlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        })
+
+        const data: WishlistApiResponse = await response.json()
+
+        if (response.ok && data.wishlist) {
+          setWishlistItems(data.wishlist)
+          console.log('✅ [WISHLIST] Loaded:', data.wishlist.length, 'items')
+        } else {
+          console.error('❌ [WISHLIST] Error:', data.error)
+          setWishlistItems([])
+        }
+      } catch (error) {
+        console.error('❌ [WISHLIST] Exception:', error)
+        setWishlistItems([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchWishlist()
+  }, [])
+
+  const handleRemoveFromWishlist = async (itemId: string) => {
+    try {
+      const token = localStorage.getItem('shopifyCustomerToken')
+
+      if (!token) return
+
+      console.log('❤️ [WISHLIST] Removing item...')
+
+      const response = await fetch('/api/auth/wishlist/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, itemId })
+      })
+
+      if (response.ok) {
+        setWishlistItems(wishlistItems.filter((item) => item.id !== itemId))
+        console.log('✅ [WISHLIST] Item removed')
+      }
+    } catch (error) {
+      console.error('❌ [WISHLIST] Failed to remove item:', error)
+    }
+  }
+
+  if (loading) {
+    return <div className="p-6">Loading wishlist...</div>
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -41,12 +102,17 @@ export function AccountWishlist() {
               className="bg-card border border-border rounded-lg overflow-hidden hover:border-accent hover:shadow-md transition-all duration-200"
             >
               <div className="aspect-square bg-muted relative overflow-hidden">
-                <img
-                  src={item.image || "/placeholder.svg?height=300&width=300&query=fashion"}
+                <Image
+                  src={item.image}
                   alt={item.name}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 50vw"
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                 />
-                <button className="absolute top-4 right-4 p-2 bg-background rounded-full hover:bg-secondary transition-colors shadow-md">
+                <button
+                  onClick={() => handleRemoveFromWishlist(item.id)}
+                  className="absolute top-4 right-4 p-2 bg-background rounded-full hover:bg-secondary transition-colors shadow-md"
+                >
                   <Heart className="w-5 h-5 fill-red-500 text-red-500" />
                 </button>
               </div>

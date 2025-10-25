@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { shopifyFetch } from '@/lib/shopify-client'
+import { ShopifyOrdersResponse, FormattedOrder, ShopifyOrderNode } from '@/lib/shopify-types'
 
 const GET_ORDERS = `
   query getOrders($token: String!) {
@@ -37,6 +38,10 @@ const GET_ORDERS = `
   }
 `
 
+interface OrderEdge {
+  node: ShopifyOrderNode;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { token } = await request.json()
@@ -50,12 +55,12 @@ export async function POST(request: NextRequest) {
 
     console.log('📦 [ORDERS] Fetching orders...')
 
-    const result = await shopifyFetch(GET_ORDERS, {
+    const result = await shopifyFetch<ShopifyOrdersResponse>(GET_ORDERS, {
       token
     })
 
-    const ordersEdges = (result as any).data?.customer?.orders?.edges || []
-    const errors = (result as any).errors
+    const ordersEdges: OrderEdge[] = result.data?.customer?.orders?.edges || []
+    const errors = result.errors
 
     if (errors) {
       console.error('❌ [ORDERS] Error:', errors)
@@ -65,14 +70,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const orders = ordersEdges.map((edge: any, index: number) => ({
+    const orders: FormattedOrder[] = ordersEdges.map((edge, index) => ({
       id: edge.node.id || `order-${index}`,
       number: edge.node.orderNumber,
       date: edge.node.processedAt,
       total: edge.node.totalPrice.amount,
       currency: edge.node.totalPrice.currencyCode,
       status: edge.node.fulfillmentStatus,
-      items: edge.node.lineItems.edges.map((item: any, itemIndex: number) => ({
+      items: edge.node.lineItems.edges.map((item, itemIndex) => ({
         id: `${index}-${itemIndex}`,
         title: item.node.title,
         quantity: item.node.quantity,
@@ -86,11 +91,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       orders
     })
-
-  } catch (error: any) {
-    console.error('❌ [ORDERS] Exception:', error.message)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+    console.error('❌ [ORDERS] Exception:', errorMessage)
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

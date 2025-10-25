@@ -246,3 +246,106 @@ export interface ShopifyAPIResponse {
     cartCreate?: ShopifyCartResponse | null;
   } | null;
 }
+
+export interface ShopifyCustomer {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  defaultAddress?: {
+    address1?: string;
+    city?: string;
+    province?: string;
+    zip?: string;
+  };
+}
+
+export interface ShopifyCustomerCreateResponse {
+  data?: {
+    customerCreate?: {
+      customer?: ShopifyCustomer;
+      userErrors?: ShopifyUserError[];
+    };
+  };
+  errors?: Array<{ message: string }>;
+}
+
+export interface ShopifyCustomerAccessToken {
+  accessToken: string;
+  expiresAt: string;
+}
+
+export interface ShopifyCustomerAccessTokenCreateResponse {
+  data?: {
+    customerAccessTokenCreate?: {
+      customerAccessToken?: ShopifyCustomerAccessToken;
+      userErrors?: ShopifyUserError[];
+    };
+  };
+  errors?: Array<{ message: string }>;
+}
+
+export interface ShopifyCustomerQueryResponse {
+  data?: {
+    customer?: ShopifyCustomer;
+  };
+  errors?: Array<{ message: string }>;
+}
+
+export interface ShopifyOrderLineItem {
+  title: string;
+  quantity: number;
+  variant?: {
+    title?: string;
+    image?: {
+      url: string;
+    };
+  };
+}
+
+export interface ShopifyOrderNode {
+  id: string;
+  orderNumber: number;
+  processedAt: string;
+  statusUrl: string;
+  totalPrice: {
+    amount: string;
+    currencyCode: string;
+  };
+  fulfillmentStatus: string;
+  lineItems: {
+    edges: Array<{
+      node: ShopifyOrderLineItem;
+    }>;
+  };
+}
+
+export interface ShopifyOrdersResponse {
+  data?: {
+    customer?: {
+      orders?: {
+        edges: Array<{
+          node: ShopifyOrderNode;
+        }>;
+      };
+    };
+  };
+  errors?: Array<{ message: string }>;
+}
+
+export interface FormattedOrder {
+  id: string;
+  number: number;
+  date: string;
+  total: string;
+  currency: string;
+  status: string;
+  items: Array<{
+    id: string;
+    title: string;
+    quantity: number;
+    variantTitle: string;
+    image?: string;
+  }>;
+}
