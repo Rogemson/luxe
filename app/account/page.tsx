@@ -82,7 +82,7 @@ export default function AccountPage() {
     <div className="flex flex-col md:flex-row gap-6 md:gap-8">
       
       {/* Sticky Sidebar */}
-      <aside className="w-full md:w-64 flex-shrink-0 md:sticky md:top-8 self-start">
+      <aside className="w-full md:w-64 shrink-0 md:sticky md:top-8 self-start">
         <AccountSidebar
           activeTab={activeTab}
           onTabChange={setActiveTab}

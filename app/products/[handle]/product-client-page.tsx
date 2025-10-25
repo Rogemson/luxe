@@ -58,6 +58,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
   const [isFavorite, setIsFavorite] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const [addedToCart, setAddedToCart] = useState(false)
   const { addToCart } = useCart()
 
   const images =
@@ -167,9 +168,12 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
       price: activeVariant.price,
       variantTitle: variantTitle,
     })
-
-    console.log("Added to cart:", product.title, variantTitle, quantity)
+    
+    // Show "Added to cart!" temporarily
+    setAddedToCart(true)
+    setTimeout(() => setAddedToCart(false), 1000)
   }
+
 
   return (
     <main className="min-h-screen bg-background">
@@ -323,7 +327,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
 
             <div className="flex gap-3 pt-4">
               <Button
-                className={`flex-1 transition-all ${
+                className={`flex-1 transition-all cursor-pointer ${
                   !isAvailable
                     ? "bg-secondary text-muted-foreground cursor-not-allowed"
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -331,12 +335,15 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                 disabled={!isAvailable}
                 onClick={handleAddToCart}
               >
-                {isAvailable
+                {addedToCart
+                  ? "Added to cart!"
+                  : isAvailable
                   ? "Add to Cart"
                   : activeVariant
                   ? "Unavailable"
                   : "Out of Stock"}
               </Button>
+
               <Button
                 variant="outline"
                 size="icon"

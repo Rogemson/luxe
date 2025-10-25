@@ -21,7 +21,7 @@ export function AccountSettings({ email, onLogout }: AccountSettingsProps) {
         <div className="bg-card border border-border rounded-lg p-6 hover:border-accent transition-colors duration-200">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1">
-              <Bell className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
+              <Bell className="w-6 h-6 text-accent shrink-0 mt-1" />
               <div>
                 <h3 className="font-serif font-semibold text-foreground text-lg">Email Notifications</h3>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -39,7 +39,7 @@ export function AccountSettings({ email, onLogout }: AccountSettingsProps) {
         <div className="bg-card border border-border rounded-lg p-6 hover:border-accent transition-colors duration-200">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1">
-              <MessageSquare className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
+              <MessageSquare className="w-6 h-6 text-accent shrink-0 mt-1" />
               <div>
                 <h3 className="font-serif font-semibold text-foreground text-lg">SMS Notifications</h3>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -57,7 +57,7 @@ export function AccountSettings({ email, onLogout }: AccountSettingsProps) {
         <div className="bg-card border border-border rounded-lg p-6 hover:border-accent transition-colors duration-200">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1">
-              <Lock className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
+              <Lock className="w-6 h-6 text-accent shrink-0 mt-1" />
               <div>
                 <h3 className="font-serif font-semibold text-foreground text-lg">Privacy Settings</h3>
                 <p className="text-sm text-muted-foreground mt-2">Control how your data is used and shared</p>
@@ -73,7 +73,7 @@ export function AccountSettings({ email, onLogout }: AccountSettingsProps) {
         <div className="bg-card border border-border rounded-lg p-6 hover:border-accent transition-colors duration-200">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1">
-              <Shield className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
+              <Shield className="w-6 h-6 text-accent shrink-0 mt-1" />
               <div>
                 <h3 className="font-serif font-semibold text-foreground text-lg">Password & Security</h3>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -91,7 +91,7 @@ export function AccountSettings({ email, onLogout }: AccountSettingsProps) {
         <div className="bg-card border border-border rounded-lg p-6 hover:border-accent transition-colors duration-200">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1">
-              <Smartphone className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
+              <Smartphone className="w-6 h-6 text-accent shrink-0 mt-1" />
               <div>
                 <h3 className="font-serif font-semibold text-foreground text-lg">Two-Factor Authentication</h3>
                 <p className="text-sm text-muted-foreground mt-2">Add an extra layer of security to your account</p>
@@ -106,7 +106,7 @@ export function AccountSettings({ email, onLogout }: AccountSettingsProps) {
 
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 sm:p-8">
         <div className="flex items-start gap-4">
-          <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+          <AlertTriangle className="w-6 h-6 text-red-600 shrink-0 mt-1" />
           <div className="flex-1">
             <h3 className="font-serif font-semibold text-red-900 text-lg mb-2">Danger Zone</h3>
             <p className="text-sm text-red-800 mb-4">

@@ -157,7 +157,7 @@ export function Header() {
             >
               <ShoppingCart className="w-5 h-5" />
               {cartCount > 0 && (
-                <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
+                <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold bg-primary text-white">
                   {cartCount}
                 </span>
               )}
@@ -170,7 +170,6 @@ export function Header() {
               >
                 <Avatar className="w-8 h-8 cursor-pointer">
                   <AvatarFallback className="text-xs font-semibold bg-accent text-accent-foreground">
-                    {/* Use the email from the state object */}
                     {getInitials(clientState.email)}
                   </AvatarFallback>
                 </Avatar>
@@ -184,7 +183,6 @@ export function Header() {
               </Link>
             )}
 
-            {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="md:hidden p-2 text-foreground"
