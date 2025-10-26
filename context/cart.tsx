@@ -182,7 +182,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         )
         const { cartId: savedCartId } = await savedCartRes.json()
 
-        if (savedCartId) {
+        if (savedCartId && savedCartId !== cartId) {
           console.log(`✅ [SYNC] Found saved cart: ${savedCartId}`)
 
           const cartRes = (await fetchCart(savedCartId)) as ShopifyCartResponse
@@ -190,13 +190,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
           if (cartData) {
             const items = parseCartData(cartData)
+            console.log(`🔄 [SYNC] Switching from ${cartId} to ${savedCartId}`)
             setCart(items)
-            setCartId(cartData.id)
+            setCartId(savedCartId)
             localStorage.setItem(CART_STORAGE_KEY, savedCartId)
             console.log("✅ [SYNC] Cart synced from saved cart")
             setIsCartSynced(true)
             return
           }
+        } else if (savedCartId === cartId) {
+          console.log("✅ [SYNC] Already using correct cart")
+          setIsCartSynced(true)
+          return
         }
 
         if (cartId) {
