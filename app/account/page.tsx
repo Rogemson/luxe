@@ -16,7 +16,6 @@ export default function AccountPage() {
   const [email, setEmail] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
-  // Check authentication on mount
   useEffect(() => {
     const checkAuth = () => {
       const storedEmail = localStorage.getItem('customerEmail')
@@ -83,10 +82,8 @@ export default function AccountPage() {
   <Header />
 
   <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-    {/* Flex layout for sidebar + main content */}
     <div className="flex flex-col md:flex-row gap-6 md:gap-8">
       
-      {/* Sticky Sidebar */}
       <aside className="w-full md:w-64 shrink-0 md:sticky md:top-8 self-start">
         <AccountSidebar
           activeTab={activeTab}
@@ -96,7 +93,6 @@ export default function AccountPage() {
         />
       </aside>
 
-      {/* Main content takes remaining space */}
       <section className="flex-1">
         {renderContent()}
       </section>

@@ -14,7 +14,6 @@ import {
 const CartContext = createContext<CartContextType | undefined>(undefined)
 const CART_STORAGE_KEY = "shopify_cart_id"
 const TOKEN_STORAGE_KEY = "customerAccessToken"
-const CUSTOMER_EMAIL_KEY = "customerEmail"
 
 interface ShopifyCartResponse {
   data?: {
@@ -162,8 +161,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (isCartSynced) return
 
       try {
-        console.log("🔗 [SYNC] Syncing cart with customer account...")
-
         const customerRes = await fetch("/api/customer/me", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -177,46 +174,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
           return
         }
 
-        console.log(`👤 [SYNC] Customer ID: ${customer.id}`)
-
         const savedCartRes = await fetch(
           `/api/customer/cart?customerId=${customer.id}`
         )
         const { cartId: savedCartId } = await savedCartRes.json()
 
         if (savedCartId && savedCartId !== cartId) {
-          console.log(`✅ [SYNC] Found saved cart: ${savedCartId}`)
-
           const cartRes = (await fetchCart(savedCartId)) as ShopifyCartResponse
           const cartData = cartRes?.data?.cart
 
           if (cartData) {
             const items = parseCartData(cartData)
-            console.log(`🔄 [SYNC] Switching from ${cartId} to ${savedCartId}`)
             setCart(items)
             setCartId(savedCartId)
             localStorage.setItem(CART_STORAGE_KEY, savedCartId)
-            console.log("✅ [SYNC] Cart synced from saved cart")
             setIsCartSynced(true)
             window.dispatchEvent(new Event("cart-sync-complete"))
             return
           }
         } else if (savedCartId === cartId) {
-          console.log("✅ [SYNC] Already using correct cart")
           setIsCartSynced(true)
           window.dispatchEvent(new Event("cart-sync-complete"))
           return
         }
 
         if (cartId) {
-          console.log(`🔗 [SYNC] Associating current cart with customer...`)
           await updateBuyerIdentity(cartId, customerAccessToken)
           await fetch("/api/customer/cart", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ customerId: customer.id, cartId }),
           })
-          console.log("✅ [SYNC] Cart associated with customer")
           setIsCartSynced(true)
           window.dispatchEvent(new Event("cart-sync-complete"))
         }
@@ -235,8 +223,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       if (storedCartId) {
         try {
-          console.log(`📦 [LOAD] Loading cart: ${storedCartId}`)
-
           const res = (await fetchCart(storedCartId)) as ShopifyCartResponse
           const cartData = res?.data?.cart
 
@@ -244,9 +230,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             const items = parseCartData(cartData)
             setCart(items)
             setCartId(cartData.id)
-            console.log("✅ [LOAD] Cart loaded fresh from Shopify")
           } else {
-            console.log("⚠️ [LOAD] Cart not found, will create new one")
             localStorage.removeItem(CART_STORAGE_KEY)
           }
         } catch (error) {
@@ -254,9 +238,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem(CART_STORAGE_KEY)
         }
       }
-      
-      // Mark as hydrated so cart creation can proceed
-      console.log("✅ [LOAD] Hydration complete")
       setIsHydrated(true)
     }
 
@@ -268,19 +249,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const initCart = async () => {
       if (!cartId && isHydrated) {
         try {
-          console.log("🆕 [INIT] Creating new cart...")
           const res = (await createCart([])) as ShopifyCartResponse
           const newCartId = res?.data?.cartCreate?.cart?.id
           if (newCartId) {
             setCartId(newCartId)
             localStorage.setItem(CART_STORAGE_KEY, newCartId)
-            console.log(`✅ [INIT] New cart created: ${newCartId}`)
             
-            // ✅ If user is logged in, trigger sync immediately after cart creation
             const token = getCustomerToken()
             if (token && !isCartSynced) {
-              console.log("🔄 [INIT] Token found, triggering immediate sync...")
-              // Use setTimeout to ensure cartId state is updated first
               setTimeout(() => syncCartWithCustomer(token), 100)
             }
           }
@@ -300,21 +276,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const customEvent = event as CustomEvent<{ token: string; customer: { id: string; email: string } }>
       const { token, customer } = customEvent.detail
 
-      console.log("🎯 [LOGIN] Received login event with customer:", customer.id)
-
-      // Wait for cartId to be available
       const waitForCart = async () => {
         let attempts = 0
         while (!cartId && attempts < 10) {
-          console.log(`⏳ [LOGIN] Waiting for cart... (attempt ${attempts + 1})`)
           await new Promise(resolve => setTimeout(resolve, 100))
           attempts++
         }
         
-        // Get the latest cartId from state
         return new Promise<string | null>((resolve) => {
           setCart((currentCart) => {
-            // Access cartId through a ref or state
             const currentCartId = localStorage.getItem(CART_STORAGE_KEY)
             resolve(currentCartId)
             return currentCart
@@ -325,7 +295,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const currentCartId = await waitForCart()
       
       if (currentCartId) {
-        console.log(`✅ [LOGIN] Cart ready: ${currentCartId}, syncing with customer...`)
         await syncWithCustomerData(token, customer.id, currentCartId)
       } else {
         console.error("❌ [LOGIN] No cart available after waiting")
@@ -340,44 +309,35 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // ✅ New helper function: sync directly with customer ID
   const syncWithCustomerData = async (token: string, customerId: string, currentCartId: string) => {
     try {
-      console.log("🔗 [SYNC] Direct sync with customer:", customerId)
-
       const savedCartRes = await fetch(`/api/customer/cart?customerId=${customerId}`)
       const { cartId: savedCartId } = await savedCartRes.json()
 
       if (savedCartId && savedCartId !== currentCartId) {
-        console.log(`✅ [SYNC] Found saved cart: ${savedCartId}`)
-
         const cartRes = (await fetchCart(savedCartId)) as ShopifyCartResponse
         const cartData = cartRes?.data?.cart
 
         if (cartData) {
           const items = parseCartData(cartData)
-          console.log(`🔄 [SYNC] Switching from ${currentCartId} to ${savedCartId}`)
           setCart(items)
           setCartId(savedCartId)
           localStorage.setItem(CART_STORAGE_KEY, savedCartId)
-          console.log("✅ [SYNC] Cart synced from saved cart")
           setIsCartSynced(true)
           window.dispatchEvent(new Event("cart-sync-complete"))
           return
         }
       } else if (savedCartId === currentCartId) {
-        console.log("✅ [SYNC] Already using correct cart")
         setIsCartSynced(true)
         window.dispatchEvent(new Event("cart-sync-complete"))
         return
       }
 
       if (currentCartId) {
-        console.log(`🔗 [SYNC] Associating current cart with customer...`)
         await updateBuyerIdentity(currentCartId, token)
         await fetch("/api/customer/cart", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ customerId, cartId: currentCartId }),
         })
-        console.log("✅ [SYNC] Cart associated with customer")
         setIsCartSynced(true)
         window.dispatchEvent(new Event("cart-sync-complete"))
       }
@@ -393,18 +353,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     
     const handleAuthChange = () => {
       const token = getCustomerToken()
-      console.log(`🔔 [AUTH] Auth token updated. Token present: ${!!token}`)
 
       if (token && cartId) {
-        console.log("🔄 [AUTH] Syncing cart after login...")
-        setIsCartSynced(false) // Reset sync flag to trigger re-sync
+        setIsCartSynced(false)
       }
     }
 
     const handleFocus = () => {
       const token = getCustomerToken()
       if (token && cartId && !isCartSynced) {
-        console.log("👁️ [FOCUS] Window focused, checking sync status...")
         syncCartWithCustomer(token)
       }
     }
@@ -423,21 +380,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!isHydrated || !cartId) return
 
     const refreshCart = async () => {
-      // ✅ Skip polling if currently debouncing
       if (isDebounceActiveRef.current) {
-        console.log("⏸️ [POLL] Skipping - debounce in progress")
         return
       }
 
       try {
-        console.log("🔄 [POLL] Checking for cart updates...")
         const res = (await fetchCart(cartId)) as ShopifyCartResponse
         const cartData = res?.data?.cart
 
         if (cartData) {
           const items = parseCartData(cartData)
           setCart(items)
-          console.log("✅ [POLL] Cart synced (multi-device)")
         }
       } catch (error) {
         console.error("⚠️ [POLL] Failed to sync:", error)
@@ -446,10 +399,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log("🟢 [POLL] Tab visible - refreshing cart")
         refreshCart()
       } else {
-        console.log("🔴 [POLL] Tab hidden - pausing sync")
       }
     }
 
@@ -473,8 +424,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addToCart = async (itemToAdd: CartItem): Promise<void> => {
     if (!cartId) return
 
-    console.log(`➕ [ADD] Adding item: ${itemToAdd.variantId}`)
-
     setCart((prev) => {
       const existing = prev.find((i) => i.variantId === itemToAdd.variantId)
       if (existing) {
@@ -496,7 +445,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (cartData) {
         const items = parseCartData(cartData)
         setCart(items)
-        console.log(`✅ [ADD] Item added and synced`)
       }
     } catch (error) {
       console.error("❌ [ADD] Failed to add to cart:", error)
@@ -507,8 +455,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // ✅ Optimistic + debounced remove
   const removeFromCart = async (variantId: string): Promise<void> => {
     if (!cartId) return
-
-    console.log(`🗑️ [REMOVE] Removing item: ${variantId}`)
 
     const previousCart = cart
     setCart((prev) => prev.filter((i) => i.variantId !== variantId))
@@ -525,7 +471,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
           return
         }
 
-        console.log(`✅ [REMOVE] Removing from Shopify`)
         await removeCartLines(cartId, [lineItem.lineId])
 
         const cartRes = (await fetchCart(cartId)) as ShopifyCartResponse
@@ -533,7 +478,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (cartData) {
           const items = parseCartData(cartData)
           setCart(items)
-          console.log(`✅ [REMOVE] Item removed and synced`)
         }
       } catch (error) {
         console.error("❌ [REMOVE] Failed to remove from cart:", error)
@@ -548,13 +492,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     quantity: number
   ): Promise<void> => {
     if (!cartId) return
-
-    console.log(`🔄 [QUANTITY] User adjusted ${variantId} to ${quantity}`)
-
-    // Mark debounce as active
     isDebounceActiveRef.current = true
 
-    // Optimistic update
     setCart((prev) => {
       if (quantity <= 0) {
         return prev.filter((i) => i.variantId !== variantId)
@@ -570,7 +509,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clearTimeout(updateTimeoutRef.current)
     }
 
-    // Debounce - wait 800ms
     updateTimeoutRef.current = setTimeout(async () => {
       try {
         const finalQuantity = quantityChangeRef.current.get(variantId)
@@ -591,8 +529,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
           return
         }
 
-        console.log(`📤 [QUANTITY] Syncing ${variantId} to ${finalQuantity}`)
-
         if (finalQuantity <= 0) {
           await removeCartLines(cartId, [lineId])
         } else {
@@ -604,12 +540,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (cartData) {
           const items = parseCartData(cartData)
           setCart(items)
-          console.log(`✅ [QUANTITY] Synced with server`)
         }
       } catch (error) {
         console.error("❌ [QUANTITY] Failed to update:", error)
       } finally {
-        // Mark debounce as complete - polling can resume
         isDebounceActiveRef.current = false
       }
     }, 800)

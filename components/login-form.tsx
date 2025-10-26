@@ -1,54 +1,60 @@
 'use client'
 
-import type React from 'react'
 import { useState } from 'react'
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
 import Link from 'next/link'
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useRouter } from 'next/navigation'
 
 export function LoginForm() {
   const router = useRouter()
-  const [showPassword, setShowPassword] = useState(false)
+  const searchParams = useSearchParams()
+  const { login, isLoading, error } = useAuth()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setIsLoading(true)
 
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+    const success = await login(email, password)
+    if (success) {
+      const redirectTo = searchParams.get('redirect') || '/account'
+
+      // Wait for cart sync to complete
+      const syncPromise = new Promise<void>((resolve) => {
+        let syncCompleted = false
+
+        const handleSyncComplete = () => {
+          if (!syncCompleted) {
+            syncCompleted = true
+            window.removeEventListener('cart-sync-complete', handleSyncComplete)
+            resolve()
+          }
+        }
+
+        window.addEventListener('cart-sync-complete', handleSyncComplete)
+
+        // Timeout fallback
+        setTimeout(() => {
+          if (!syncCompleted) {
+            syncCompleted = true
+            window.removeEventListener('cart-sync-complete', handleSyncComplete)
+            resolve()
+          }
+        }, 2000)
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Login failed')
-        setIsLoading(false)
-        return
-      }
-
-      // Store token and email
-      localStorage.setItem('shopifyCustomerToken', data.token)
-      localStorage.setItem('customerEmail', email)
-
-      // Redirect to account
-      router.push('/account')
-    } catch {
-      setError('An error occurred')
-      setIsLoading(false)
+      await syncPromise
+      router.push(redirectTo)
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Error Message */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
           {error}
@@ -63,7 +69,7 @@ export function LoginForm() {
           <input
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             required
@@ -76,7 +82,10 @@ export function LoginForm() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium">Password</label>
-          <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+          <Link
+            href="/forgot-password"
+            className="text-sm text-primary hover:underline"
+          >
             Forgot password?
           </Link>
         </div>
@@ -85,7 +94,7 @@ export function LoginForm() {
           <input
             type={showPassword ? 'text' : 'password'}
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             className="w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             required
@@ -96,18 +105,17 @@ export function LoginForm() {
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showPassword ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
           </button>
         </div>
       </div>
 
       {/* Submit Button */}
-      <Button
-        type="submit"
-        disabled={isLoading}
-        className="w-full"
-        size="lg"
-      >
+      <Button type="submit" disabled={isLoading} className="w-full" size="lg">
         {isLoading ? 'Signing in...' : 'Sign In'}
         <ArrowRight className="ml-2 w-4 h-4" />
       </Button>
@@ -115,7 +123,10 @@ export function LoginForm() {
       {/* Signup Link */}
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{' '}
-        <Link href="/signup" className="text-primary hover:underline font-medium">
+        <Link
+          href="/signup"
+          className="text-primary hover:underline font-medium"
+        >
           Create one
         </Link>
       </p>
