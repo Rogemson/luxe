@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login, isLoading, error } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -15,11 +16,40 @@ export default function LoginPage() {
 
     const success = await login(email, password)
     if (success) {
-      console.log("✅ Login successful, redirecting...")
-      // Give cart context time to sync
-      setTimeout(() => {
-        router.push("/")
-      }, 500)
+      console.log("✅ Login successful, waiting for cart sync...")
+      
+      // Get redirect URL from query params or default to account page
+      const redirectTo = searchParams.get("redirect") || "/account"
+      
+      // Wait for cart sync to complete
+      const syncPromise = new Promise<void>((resolve) => {
+        let syncCompleted = false
+        
+        const handleSyncComplete = () => {
+          if (!syncCompleted) {
+            syncCompleted = true
+            console.log("✅ Cart sync completed, ready to redirect")
+            window.removeEventListener("cart-sync-complete", handleSyncComplete)
+            resolve()
+          }
+        }
+        
+        window.addEventListener("cart-sync-complete", handleSyncComplete)
+        
+        // Timeout: if no sync after 2 seconds, proceed
+        setTimeout(() => {
+          if (!syncCompleted) {
+            syncCompleted = true
+            window.removeEventListener("cart-sync-complete", handleSyncComplete)
+            console.log("⏰ Cart sync timeout, proceeding anyway")
+            resolve()
+          }
+        }, 2000)
+      })
+      
+      await syncPromise
+      console.log("🔄 Redirecting to:", redirectTo)
+      router.push(redirectTo)
     }
   }
 

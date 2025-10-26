@@ -20,10 +20,11 @@ export default function AccountPage() {
   useEffect(() => {
     const checkAuth = () => {
       const storedEmail = localStorage.getItem('customerEmail')
-      const token = localStorage.getItem('shopifyCustomerToken')
+      const token = localStorage.getItem('customerAccessToken') || localStorage.getItem('shopifyCustomerToken')
 
       if (!storedEmail || !token) {
-        router.push('/login')
+        console.log('❌ [ACCOUNT] Not authenticated, redirecting to login...')
+        router.push('/login?redirect=/account')
         return
       }
 
@@ -40,7 +41,11 @@ export default function AccountPage() {
 
   const handleLogout = () => {
     localStorage.removeItem('shopifyCustomerToken')
+    localStorage.removeItem('customerAccessToken')
     localStorage.removeItem('customerEmail')
+    localStorage.removeItem('shopify_cart_id')
+    
+    window.dispatchEvent(new Event('auth-token-updated'))
     router.push('/login')
   }
 

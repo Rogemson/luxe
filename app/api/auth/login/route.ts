@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createCustomerAccessToken } from "@/lib/shopify-client"
+import { createCustomerAccessToken, fetchCustomer } from "@/lib/shopify-client"
 
 // ✅ Add proper response type
 interface CustomerAccessTokenResponse {
@@ -18,6 +18,17 @@ interface CustomerAccessTokenResponse {
   errors?: Array<{
     message: string
   }>
+}
+
+interface CustomerResponse {
+  data?: {
+    customer?: {
+      id: string
+      email: string
+      firstName?: string
+      lastName?: string
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -54,9 +65,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Return token (client will store in localStorage)
+    // ✅ Fetch customer data immediately after login
+    console.log("🔍 [LOGIN] Fetching customer data...")
+    const customerResult = (await fetchCustomer(token)) as CustomerResponse
+    const customer = customerResult?.data?.customer
+
+    if (!customer) {
+      console.error("❌ [LOGIN] Customer not found after login")
+      return NextResponse.json(
+        { error: "Customer data not available" },
+        { status: 404 }
+      )
+    }
+
+    console.log(`✅ [LOGIN] Customer authenticated: ${customer.id}`)
+
+    // Return token AND customer data
     return NextResponse.json(
-      { token, success: true },
+      { 
+        token, 
+        success: true,
+        customer: {
+          id: customer.id,
+          email: customer.email,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+        }
+      },
       {
         headers: {
           "Set-Cookie": `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Strict`,

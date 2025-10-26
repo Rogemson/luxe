@@ -1,8 +1,16 @@
 import { useState, useCallback } from "react"
 
+interface CustomerData {
+  id: string
+  email: string
+  firstName?: string
+  lastName?: string
+}
+
 interface LoginResponse {
   token: string
   success: boolean
+  customer?: CustomerData
 }
 
 export function useAuth() {
@@ -27,13 +35,24 @@ export function useAuth() {
         return false
       }
 
-      if (data.token && data.success) {
-        // ✅ Store token in localStorage
-        localStorage.setItem("customerAccessToken", data.token)
-        console.log("✅ [AUTH] Token stored in localStorage")
+      if (data.token && data.success && data.customer) {
+        console.log("✅ [AUTH] Login successful, customer:", data.customer.id)
         
-        // Trigger cart sync by reloading or dispatching event
-        window.dispatchEvent(new Event("auth-token-updated"))
+        // ✅ Store all auth data
+        localStorage.setItem("customerAccessToken", data.token)
+        localStorage.setItem("customerEmail", data.customer.email)
+        localStorage.setItem("customerId", data.customer.id)
+        localStorage.setItem("shopifyCustomerToken", data.token) // For backward compatibility
+        
+        // ✅ Trigger immediate cart sync with customer data
+        window.dispatchEvent(new CustomEvent("auth-login-complete", { 
+          detail: { 
+            token: data.token,
+            customer: data.customer 
+          } 
+        }))
+        
+        console.log("✅ [AUTH] Dispatched login complete event with customer data")
         
         return true
       }
@@ -51,8 +70,13 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     try {
+      // Remove all auth-related items
       localStorage.removeItem("customerAccessToken")
+      localStorage.removeItem("customerEmail")
+      localStorage.removeItem("customerId")
+      localStorage.removeItem("shopifyCustomerToken")
       localStorage.removeItem("shopify_cart_id")
+      
       window.dispatchEvent(new Event("auth-token-updated"))
       console.log("✅ [AUTH] Logged out")
       return true
