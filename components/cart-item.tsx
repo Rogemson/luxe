@@ -29,7 +29,7 @@ export function CartItem({
   return (
     <div className="relative flex flex-col sm:flex-row gap-4 py-6 border-b border-border">
       {/* Image */}
-      <div className="relative w-full h-48 sm:w-24 sm:h-32 flex-shrink-0">
+      <div className="relative w-full h-48 sm:w-24 sm:h-32 shrink-0">
         <Image
           src={image || "/placeholder.svg"}
           alt={name}

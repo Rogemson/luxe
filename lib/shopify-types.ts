@@ -187,6 +187,7 @@ export interface ShopifyCart {
 export interface CartItem {
   variantId: string
   merchandiseId: string
+  lineId?: string
   quantity: number
   title: string
   handle: string

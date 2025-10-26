@@ -4,11 +4,10 @@ import { useState, useEffect } from 'react'
 import { Menu, X, Search, User } from 'lucide-react'
 import Link from 'next/link'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { useCart } from '@/context/cart'
 import { useSearch } from '@/context/search'
 import { SearchModal } from '@/components/search-modal'
 import { CartDrawer } from '@/components/cart-drawer'
-import { MegaMenu } from '@/components/mega-menu' // ✅ Add this
+import { MegaMenu } from '@/components/mega-menu'
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -17,7 +16,6 @@ export function Header() {
     email: '',
     token: '',
   })
-  const { cartCount } = useCart()
   const { products, isSearchOpen, openSearch, closeSearch } = useSearch()
 
   useEffect(() => {
@@ -50,7 +48,7 @@ export function Header() {
 
   if (!clientState.mounted) {
     return (
-      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="max-w-7xl mx-auto">
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="h-8 w-24 bg-secondary animate-pulse rounded" />
@@ -69,7 +67,7 @@ export function Header() {
         products={products}
       />
 
-      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="max-w-7xl mx-auto">
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             {/* Logo */}
@@ -118,7 +116,7 @@ export function Header() {
                   </Avatar>
                 </Link>
               ) : (
-                <Link href="/account/login">
+                <Link href="/login">
                   <button className="p-2 hover:bg-secondary rounded-full transition-colors">
                     <User className="w-5 h-5" />
                   </button>

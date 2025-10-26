@@ -25,7 +25,18 @@ import {
 
 import {
   CART_CREATE_MUTATION,
-} from "@/lib/queries/checkout-queries"
+  CART_QUERY,
+  CART_LINES_ADD_MUTATION,
+  CART_LINES_UPDATE_MUTATION,
+  CART_LINES_REMOVE_MUTATION,
+  CART_BUYER_IDENTITY_UPDATE_MUTATION,
+} from "@/lib/queries/cart-queries"
+
+import {
+  CUSTOMER_ACCESS_TOKEN_CREATE,
+  CUSTOMER_QUERY,
+} from "@/lib/queries/customer-queries"
+
 
 const SHOPIFY_STORE_URL = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL
 const SHOPIFY_ACCESS_TOKEN = process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN
@@ -34,6 +45,18 @@ const SHOPIFY_API_VERSION = "2024-01"
 interface CacheEntry<T> {
   data: T
   timestamp: number
+}
+
+interface CustomerAccessTokenInput {
+  email: string
+  password: string
+}
+
+interface ShopifyFetchResponse {
+  data?: Record<string, unknown>
+  errors?: Array<{
+    message: string
+  }>
 }
 
 // ✅ ADD CACHING
@@ -370,4 +393,60 @@ export async function createShopifyCheckout(items: { merchandiseId: string; quan
     console.error("Error creating Shopify checkout:", error);
     throw error;
   }
+}
+
+export async function createCustomerAccessToken(input: CustomerAccessTokenInput) {
+  return shopifyFetch(CUSTOMER_ACCESS_TOKEN_CREATE, { input })
+}
+
+export async function fetchCustomer(
+  customerAccessToken: string
+): Promise<ShopifyFetchResponse> {
+  return shopifyFetch(CUSTOMER_QUERY, { customerAccessToken })
+}
+
+interface CartLineInput {
+  merchandiseId: string
+  quantity: number
+}
+
+interface CartLineUpdateInput {
+  id: string
+  quantity: number
+}
+
+export async function createCart(
+  lines: CartLineInput[] = [],
+  customerAccessToken?: string
+) {
+  const input: Record<string, unknown> = { lines }
+
+  if (customerAccessToken) {
+    input.buyerIdentity = { customerAccessToken }
+  }
+
+  return shopifyFetch(CART_CREATE_MUTATION, { input })
+}
+
+export async function fetchCart(cartId: string) {
+  return shopifyFetch(CART_QUERY, { cartId })
+}
+
+export async function addCartLines(cartId: string, lines: CartLineInput[]) {
+  return shopifyFetch(CART_LINES_ADD_MUTATION, { cartId, lines })
+}
+
+export async function updateCartLines(cartId: string, lines: CartLineUpdateInput[]) {
+  return shopifyFetch(CART_LINES_UPDATE_MUTATION, { cartId, lines })
+}
+
+export async function removeCartLines(cartId: string, lineIds: string[]) {
+  return shopifyFetch(CART_LINES_REMOVE_MUTATION, { cartId, lineIds })
+}
+
+export async function updateBuyerIdentity(cartId: string, customerAccessToken: string) {
+  return shopifyFetch(CART_BUYER_IDENTITY_UPDATE_MUTATION, {
+    cartId,
+    buyerIdentity: { customerAccessToken },
+  })
 }

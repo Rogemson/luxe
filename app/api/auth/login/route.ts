@@ -1,21 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { shopifyFetch } from '@/lib/shopify-client'
-import { ShopifyCustomerAccessTokenCreateResponse } from '@/lib/shopify-types'
+import { NextRequest, NextResponse } from "next/server"
+import { createCustomerAccessToken } from "@/lib/shopify-client"
 
-const CUSTOMER_LOGIN = `
-  mutation customerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
-    customerAccessTokenCreate(input: $input) {
-      customerAccessToken {
-        accessToken
-        expiresAt
+// ✅ Add proper response type
+interface CustomerAccessTokenResponse {
+  data?: {
+    customerAccessTokenCreate?: {
+      customerAccessToken?: {
+        accessToken: string
+        expiresAt: string
       }
-      userErrors {
-        field
-        message
-      }
+      userErrors?: Array<{
+        field?: string
+        message: string
+      }>
     }
   }
-`
+  errors?: Array<{
+    message: string
+  }>
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,40 +26,47 @@ export async function POST(request: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email and password required' },
+        { error: "Email and password required" },
         { status: 400 }
       )
     }
 
-    const result = await shopifyFetch<ShopifyCustomerAccessTokenCreateResponse>(CUSTOMER_LOGIN, {
-      input: { email, password }
-    })
+    // Create customer access token with proper typing
+    const result = (await createCustomerAccessToken({
+      email,
+      password,
+    })) as CustomerAccessTokenResponse
 
-    const token = result.data?.customerAccessTokenCreate?.customerAccessToken?.accessToken
-    const errors = result.data?.customerAccessTokenCreate?.userErrors
+    const token = result?.data?.customerAccessTokenCreate?.customerAccessToken?.accessToken
+    const userErrors = result?.data?.customerAccessTokenCreate?.userErrors
 
-    if (errors && errors.length > 0) {
+    if (userErrors && userErrors.length > 0) {
       return NextResponse.json(
-        { error: errors[0]?.message || 'Login failed' },
-        { status: 400 }
+        { error: userErrors[0]?.message || "Login failed" },
+        { status: 401 }
       )
     }
 
     if (!token) {
       return NextResponse.json(
-        { error: 'Login failed' },
-        { status: 400 }
+        { error: "Failed to generate access token" },
+        { status: 401 }
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      token
-    })
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+    // Return token (client will store in localStorage)
     return NextResponse.json(
-      { error: errorMessage },
+      { token, success: true },
+      {
+        headers: {
+          "Set-Cookie": `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Strict`,
+        },
+      }
+    )
+  } catch (error) {
+    console.error("Login error:", error)
+    return NextResponse.json(
+      { error: "Login failed" },
       { status: 500 }
     )
   }
