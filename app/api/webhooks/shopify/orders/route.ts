@@ -94,11 +94,20 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
 
     const coupon = discounts?.[0]?.code
 
-    console.log('📊 Preparing GA4 purchase event...')
-    console.log('- Order ID:', orderId)
-    console.log('- Total:', totalPrice)
-    console.log('- Items:', ga4Items.length)
-    console.log('- Coupon:', coupon || 'None')
+    console.log('📊 GA4 Config Check:')
+    console.log('- GA ID:', process.env.NEXT_PUBLIC_GA_ID)
+    console.log('- API Secret exists:', !!process.env.GA4_API_SECRET)
+    console.log('- Measurement ID:', process.env.NEXT_PUBLIC_GA_ID ? '✅' : '❌')
+
+    const measurementId = process.env.NEXT_PUBLIC_GA_ID
+    const apiSecret = process.env.GA4_API_SECRET
+
+    if (!measurementId || !apiSecret) {
+      console.error('❌ Missing GA4 config:')
+      console.error('- NEXT_PUBLIC_GA_ID:', measurementId ? 'SET' : 'MISSING')
+      console.error('- GA4_API_SECRET:', apiSecret ? 'SET' : 'MISSING')
+      return false
+    }
 
     interface GA4Params {
       transaction_id: string
@@ -138,10 +147,12 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
       ],
     }
 
-    console.log('🔗 Sending to GA4 Measurement Protocol...')
+    console.log('🔗 Sending to GA4:')
+    console.log('URL:', `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret.substring(0, 5)}...`)
+    console.log('Payload:', JSON.stringify(ga4Payload, null, 2))
 
     const gaResponse = await fetch(
-      `https://www.google-analytics.com/mp/collect?measurement_id=${process.env.NEXT_PUBLIC_GA_ID}&api_secret=${process.env.GA4_API_SECRET}`,
+      `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,8 +160,16 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
       }
     )
 
+    console.log('📡 GA4 Response Status:', gaResponse.status)
+    console.log('📡 GA4 Response OK:', gaResponse.ok)
+
+    const gaResponseText = await gaResponse.text()
+    console.log('📡 GA4 Response Body:', gaResponseText)
+
     if (!gaResponse.ok) {
-      console.error('❌ GA4 request failed:', gaResponse.statusText)
+      console.error('❌ GA4 request failed:')
+      console.error('- Status:', gaResponse.status)
+      console.error('- Body:', gaResponseText)
       return false
     }
 
