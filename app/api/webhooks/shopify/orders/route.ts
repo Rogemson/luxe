@@ -39,13 +39,7 @@ function verifyWebhookSignature(request: NextRequest, body: string): boolean {
   const hmacHeader = request.headers.get('X-Shopify-Hmac-SHA256')
   const clientSecret = process.env.SHOPIFY_CLIENT_SECRET || ''
 
-  console.log('🔍 Debug Info:')
-  console.log('- HMAC Header:', hmacHeader ? '✅ PRESENT' : '❌ MISSING')
-  console.log('- Client Secret:', clientSecret ? '✅ SET' : '❌ MISSING')
-  console.log('- Secret value (first 10 chars):', clientSecret.substring(0, 10))
-
   if (!hmacHeader || !clientSecret) {
-    console.error('❌ Missing HMAC header or client secret')
     return false
   }
 
@@ -53,10 +47,6 @@ function verifyWebhookSignature(request: NextRequest, body: string): boolean {
     .createHmac('sha256', clientSecret)
     .update(body, 'utf8')
     .digest('base64')
-
-  console.log('- HMAC from header:', hmacHeader.substring(0, 20) + '...')
-  console.log('- HMAC calculated:', hash.substring(0, 20) + '...')
-  console.log('- Match:', hash === hmacHeader ? '✅ YES' : '❌ NO')
 
   const isValid = hash === hmacHeader
   return isValid
@@ -98,19 +88,10 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
     }))
 
     const coupon = discounts?.[0]?.code
-
-    console.log('📊 GA4 Config Check:')
-    console.log('- GA ID:', process.env.NEXT_PUBLIC_GA_ID)
-    console.log('- API Secret exists:', !!process.env.GA4_API_SECRET)
-    console.log('- Measurement ID:', process.env.NEXT_PUBLIC_GA_ID ? '✅' : '❌')
-
     const measurementId = process.env.NEXT_PUBLIC_GA_ID
     const apiSecret = process.env.GA4_API_SECRET
 
     if (!measurementId || !apiSecret) {
-      console.error('❌ Missing GA4 config:')
-      console.error('- NEXT_PUBLIC_GA_ID:', measurementId ? 'SET' : 'MISSING')
-      console.error('- GA4_API_SECRET:', apiSecret ? 'SET' : 'MISSING')
       return false
     }
 
@@ -151,11 +132,6 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
         },
       ],
     }
-
-    console.log('🔗 Sending to GA4:')
-    console.log('URL:', `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret.substring(0, 5)}...`)
-    console.log('Payload:', JSON.stringify(ga4Payload, null, 2))
-
     const gaResponse = await fetch(
       `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
       {
@@ -165,23 +141,12 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
       }
     )
 
-    console.log('📡 GA4 Response Status:', gaResponse.status)
-    console.log('📡 GA4 Response OK:', gaResponse.ok)
-
-    const gaResponseText = await gaResponse.text()
-    console.log('📡 GA4 Response Body:', gaResponseText)
-
     if (!gaResponse.ok) {
-      console.error('❌ GA4 request failed:')
-      console.error('- Status:', gaResponse.status)
-      console.error('- Body:', gaResponseText)
       return false
     }
 
-    console.log('✅ GA4 purchase event tracked successfully!\n')
     return true
   } catch (error) {
-    console.error('❌ GA4 tracking error:', error)
     return false
   }
 }
