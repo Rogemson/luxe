@@ -9,9 +9,15 @@ import { ShopifyProduct } from "@/lib/shopify-types"
 
 interface CollectionProductGridProps {
   products: ShopifyProduct[]
+  collectionHandle: string
+  collectionTitle: string
 }
 
-export function CollectionProductGrid({ products }: CollectionProductGridProps) {
+export function CollectionProductGrid({ 
+  products, 
+  collectionHandle,
+  collectionTitle 
+}: CollectionProductGridProps) {
   const { filters, setFilters, applyFilters } = useFilters()
 
   // Apply filters and sorting
@@ -97,6 +103,8 @@ export function CollectionProductGrid({ products }: CollectionProductGridProps) 
                   image={product.image}
                   category={product.category}
                   index={index}
+                  collectionHandle={collectionHandle}
+                  collectionTitle={collectionTitle}
                 />
               ))}
             </div>

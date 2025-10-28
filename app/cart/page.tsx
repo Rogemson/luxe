@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, ShoppingBag } from "lucide-react"
 import { CartItem } from "@/components/cart-item"
@@ -8,15 +8,29 @@ import { CartSummary } from "@/components/cart-summary"
 import { Button } from "@/components/ui/button"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-
 import { useCart } from "@/context/cart"
 import { createShopifyCheckout } from "@/lib/shopify-client"
+import { trackViewCart, trackBeginCheckout } from "@/lib/ga4"
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, totalPrice, isEmpty } = useCart()
-
   const [isProcessing, setIsProcessing] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+
+  // Track view cart on page load
+  useEffect(() => {
+    if (!isEmpty) {
+      const ga4Items = cart.map((item) => ({
+        item_id: item.variantId,
+        item_name: item.title,
+        item_variant: item.variantTitle,
+        price: item.price,
+        quantity: item.quantity,
+      }))
+
+      trackViewCart(ga4Items, totalPrice)
+    }
+  }, [cart, isEmpty, totalPrice])
 
   const handleCheckout = async (): Promise<void> => {
     if (isEmpty) return
@@ -25,19 +39,31 @@ export default function CartPage() {
     setCheckoutError(null)
 
     try {
+      // Track begin checkout
+      const ga4Items = cart.map((item) => ({
+        item_id: item.variantId,
+        item_name: item.title,
+        item_variant: item.variantTitle,
+        price: item.price,
+        quantity: item.quantity,
+      }))
+
+      trackBeginCheckout(ga4Items, totalPrice)
+
       // Map cart items to Shopify CartLineInput format
-      const lines = cart.map(item => ({
+      const lines = cart.map((item) => ({
         merchandiseId: item.variantId,
         quantity: item.quantity,
       }))
 
-      // Create the Shopify checkout URL using properly formatted input
+      // Create the Shopify checkout URL
       const checkoutUrl = await createShopifyCheckout(lines)
 
       // Redirect to Shopify checkout
       window.location.href = checkoutUrl
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create checkout. Please try again."
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create checkout. Please try again."
       console.error("Checkout error:", error)
       setCheckoutError(errorMessage)
       setIsProcessing(false)

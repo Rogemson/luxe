@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { ShoppingCart, Minus, Plus, Trash2 } from "lucide-react"
 import Image from "next/image"
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet"
 import { useCart } from "@/context/cart"
 import { createShopifyCheckout } from "@/lib/shopify-client"
+import { trackBeginCheckout } from "@/lib/ga4"
 import { useState } from "react"
 
 export function CartDrawer() {
@@ -26,6 +27,17 @@ export function CartDrawer() {
 
     setIsProcessing(true)
     try {
+      // Track begin checkout
+      const ga4Items = cart.map((item) => ({
+        item_id: item.variantId,
+        item_name: item.title,
+        item_variant: item.variantTitle,
+        price: item.price,
+        quantity: item.quantity,
+      }))
+
+      trackBeginCheckout(ga4Items, totalPrice)
+
       const lines = cart.map((item) => ({
         merchandiseId: item.variantId,
         quantity: item.quantity,

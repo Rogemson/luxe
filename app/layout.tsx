@@ -8,6 +8,7 @@ import { WishlistProvider } from '@/context/wishlist'
 import { SearchProvider } from '@/context/search'
 import { ProductsLoader } from '@/components/products-loader'
 import { FiltersProvider } from '@/context/filters'
+import { GoogleAnalytics } from '@next/third-parties/google'
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <FiltersProvider>  {/* Add this wrapper */}
                 <ProductsLoader />
                 {children}
+                <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID!} />
               </FiltersProvider>
             </SearchProvider>
           </WishlistProvider>

@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState } from "react"
 import Image from "next/image"
@@ -7,6 +7,7 @@ import { Heart, ShoppingCart } from "lucide-react"
 import { PriceDisplay, SaleBadge } from "@/components/sale-badge"
 import { useWishlist } from "@/context/wishlist"
 import { QuickAddModal } from "@/components/product-modal"
+import { trackSelectItem } from "@/lib/ga4"
 import type { ShopifyProduct } from "@/lib/shopify-types"
 
 interface ProductCardProps {
@@ -18,6 +19,8 @@ interface ProductCardProps {
   category?: string
   index?: number
   product?: ShopifyProduct
+  collectionHandle?: string
+  collectionTitle?: string
 }
 
 export function ProductCard({
@@ -28,7 +31,9 @@ export function ProductCard({
   image,
   category,
   index = 0,
-  product
+  product,
+  collectionHandle = '',
+  collectionTitle = 'Products',
 }: ProductCardProps) {
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist()
   const inWishlist = isInWishlist(id)
@@ -47,7 +52,7 @@ export function ProductCard({
         title,
         handle: id,
         price,
-        image
+        image,
       })
     }
   }
@@ -58,10 +63,26 @@ export function ProductCard({
     setIsModalOpen(true)
   }
 
+  const handleProductClick = () => {
+    // Track product selection
+    trackSelectItem(
+      {
+        item_id: id,
+        item_name: title,
+        item_category: category || collectionTitle,
+        price,
+        quantity: 1,
+      },
+      collectionTitle,
+      `collection_${collectionHandle}`,
+      index
+    )
+  }
+
   return (
     <>
       <div className="group cursor-pointer">
-        <Link href={`/products/${id}`}>
+        <Link href={`/products/${id}`} onClick={handleProductClick}>
           <div className="relative overflow-hidden bg-secondary mb-4 aspect-square">
             <Image
               src={image || "/placeholder.svg"}
@@ -86,6 +107,7 @@ export function ProductCard({
             <button
               onClick={handleWishlistToggle}
               className="absolute top-4 right-4 p-2 bg-background/80 backdrop-blur-sm rounded-full hover:bg-background transition-colors z-10"
+              aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
             >
               <Heart
                 className={`w-5 h-5 transition-colors ${
@@ -99,6 +121,7 @@ export function ProductCard({
             <button
               onClick={handleQuickAdd}
               className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-foreground text-background rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 hover:bg-foreground/90 z-10"
+              aria-label="Quick add to cart"
             >
               <ShoppingCart className="w-4 h-4" />
               <span className="text-sm font-medium">Quick Add</span>
@@ -114,7 +137,7 @@ export function ProductCard({
           )}
 
           <div className="flex items-start justify-between gap-2">
-            <Link href={`/products/${id}`}>
+            <Link href={`/products/${id}`} onClick={handleProductClick}>
               <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-accent transition-colors">
                 {title}
               </h3>

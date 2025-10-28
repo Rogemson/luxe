@@ -367,33 +367,80 @@ export async function getRelatedProducts(productId: string): Promise<ShopifyProd
 
 export async function createShopifyCheckout(items: { merchandiseId: string; quantity: number }[]) {
   try {
-    console.log("Creating Shopify checkout with items:", items);
+    console.log("🛒 === CHECKOUT DEBUG START ===");
+    console.log("📦 Items being sent:", JSON.stringify(items, null, 2));
 
-    const response: ShopifyAPIResponse = await shopifyFetch(CART_CREATE_MUTATION, { lines: items });
+    // IMPORTANT: Wrap items in the correct format for CartInput
+    const input = {
+      lines: items.map(item => ({
+        merchandiseId: item.merchandiseId,
+        quantity: item.quantity,
+      }))
+    };
 
-    console.log("Full Shopify response:", response);
+    console.log("📝 CartInput being sent:", JSON.stringify(input, null, 2));
 
-    if (!response?.data?.cartCreate) {
-      throw new Error("Shopify response missing 'data.cartCreate'. Check your mutation or API version.");
+    const response: ShopifyAPIResponse = await shopifyFetch(CART_CREATE_MUTATION, { input });
+
+    console.log("📡 Full Shopify API Response:", JSON.stringify(response, null, 2));
+
+    if (!response) {
+      console.error("❌ Response is null/undefined");
+      throw new Error("No response from Shopify API");
+    }
+
+    if (!response.data) {
+      console.error("❌ response.data is missing");
+      console.error("Response keys:", Object.keys(response));
+      throw new Error("Shopify response missing 'data' field");
+    }
+
+    if (!response.data.cartCreate) {
+      console.error("❌ response.data.cartCreate is missing");
+      console.error("Data keys:", Object.keys(response.data));
+      throw new Error("Shopify response missing 'data.cartCreate'.");
     }
 
     const { cart, userErrors } = response.data.cartCreate;
 
+    console.log("🔍 Cart object:", JSON.stringify(cart, null, 2));
+    console.log("🔍 User errors:", userErrors);
+
     if (userErrors && userErrors.length > 0) {
-      console.error("Shopify cart creation errors:", userErrors);
-      throw new Error(userErrors.map(e => e.message).join(", "));
+      console.error("❌ Shopify cart creation errors:", userErrors);
+      const errorMessages = userErrors.map(e => `${e.field}: ${e.message}`).join(" | ");
+      throw new Error(`Cart creation failed: ${errorMessages}`);
     }
 
-    if (!cart?.checkoutUrl) {
+    if (!cart) {
+      console.error("❌ Cart object is null/undefined");
+      throw new Error("Shopify did not return a cart object");
+    }
+
+    if (!cart.checkoutUrl) {
+      console.error("❌ checkoutUrl is missing from cart");
+      console.error("Cart keys:", Object.keys(cart));
+      console.error("Full cart:", cart);
       throw new Error("Checkout creation failed: Shopify did not return a checkout URL.");
     }
 
+    console.log("✅ Checkout URL obtained:", cart.checkoutUrl);
+    console.log("✅ Cart has", cart.lines?.edges?.length || 0, "items");
+    
+    console.log("🛒 === CHECKOUT DEBUG END ===");
+
     return cart.checkoutUrl;
   } catch (error) {
-    console.error("Error creating Shopify checkout:", error);
+    console.error("❌ === CHECKOUT ERROR ===");
+    console.error("Error type:", error instanceof Error ? error.constructor.name : typeof error);
+    console.error("Error message:", error instanceof Error ? error.message : error);
+    console.error("Full error:", error);
+    console.error("❌ === END ERROR ===");
     throw error;
   }
 }
+
+
 
 export async function createCustomerAccessToken(input: CustomerAccessTokenInput) {
   return shopifyFetch(CUSTOMER_ACCESS_TOKEN_CREATE, { input })

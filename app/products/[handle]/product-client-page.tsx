@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import Image from "next/image"
-import { useRouter } from "next/navigation"
-import { Header } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import { PriceDisplay } from "@/components/sale-badge"
+import { useState } from 'react'
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { Header } from '@/components/header'
+import { Button } from '@/components/ui/button'
+import { PriceDisplay } from '@/components/sale-badge'
 import {
   Heart,
   Share2,
@@ -13,10 +13,12 @@ import {
   ChevronRight,
   Minus,
   Plus,
-} from "lucide-react"
-import type { ShopifyProduct } from "@/lib/shopify-types"
-import { useCart } from "@/context/cart"
-import { useProductVariants } from "@/hooks/useProductVariants"
+} from 'lucide-react'
+import type { ShopifyProduct } from '@/lib/shopify-types'
+import { useCart } from '@/context/cart'
+import { useProductVariants } from '@/hooks/useProductVariants'
+import { trackAddToCart, trackBeginCheckout } from '@/lib/ga4'
+import { createShopifyCheckout } from '@/lib/shopify-client'
 
 interface QuantitySelectorProps {
   quantity: number
@@ -60,10 +62,10 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [addedToCart, setAddedToCart] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const { addToCart } = useCart()
 
-  // Use the shared hook for variant management
-  const { selectedOptions, activeVariant, handleOptionSelect, checkAvailability } = 
+  const { selectedOptions, activeVariant, handleOptionSelect, checkAvailability } =
     useProductVariants(product)
 
   const images =
@@ -96,12 +98,28 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
 
   const handleAddToCart = () => {
     if (!activeVariant) {
-      console.error("No variant selected")
+      console.error('No variant selected')
       return
     }
+
     const variantTitle = activeVariant.selectedOptions
       .map((opt) => opt.value)
-      .join(" / ")
+      .join(' / ')
+
+    // Track add to cart
+    trackAddToCart(
+      [
+        {
+          item_id: activeVariant.id,
+          item_name: product.title,
+          item_category: product.collection || 'Product',
+          item_variant: variantTitle,
+          price: activeVariant.price,
+          quantity: quantity,
+        },
+      ],
+      activeVariant.price * quantity
+    )
 
     addToCart({
       variantId: activeVariant.id,
@@ -113,9 +131,52 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
       price: activeVariant.price,
       variantTitle: variantTitle,
     })
-    
+
     setAddedToCart(true)
     setTimeout(() => setAddedToCart(false), 1000)
+  }
+
+  const handleBuyNow = async () => {
+    if (!activeVariant) {
+      console.error('No variant selected')
+      return
+    }
+
+    setIsProcessing(true)
+
+    try {
+      const variantTitle = activeVariant.selectedOptions
+        .map((opt) => opt.value)
+        .join(' / ')
+
+      // Track begin checkout
+      trackBeginCheckout(
+        [
+          {
+            item_id: activeVariant.id,
+            item_name: product.title,
+            item_category: product.collection || 'Product',
+            item_variant: variantTitle,
+            price: activeVariant.price,
+            quantity: quantity,
+          },
+        ],
+        activeVariant.price * quantity
+      )
+
+      const lines = [
+        {
+          merchandiseId: activeVariant.id,
+          quantity: quantity,
+        },
+      ]
+
+      const checkoutUrl = await createShopifyCheckout(lines)
+      window.location.href = checkoutUrl
+    } catch (error) {
+      console.error('Checkout error:', error)
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -125,19 +186,19 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12">
           {/* Images */}
           <div className="space-y-4">
-          <Button
-            variant="ghost"
-            onClick={() => router.push("/products")}
-            className="mb-8 text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Back to Products
-          </Button>
+            <Button
+              variant="ghost"
+              onClick={() => router.push('/products')}
+              className="mb-8 text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Back to Products
+            </Button>
             <div className="relative aspect-square overflow-hidden rounded-lg bg-secondary">
               {images[currentImageIndex] ? (
                 <Image
                   src={images[currentImageIndex]}
-                  alt={product.title || "Product image"}
+                  alt={product.title || 'Product image'}
                   fill
                   priority
                   sizes="(max-width: 768px) 100vw, 50vw"
@@ -177,14 +238,14 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                     onClick={() => setCurrentImageIndex(i)}
                     className={`relative w-20 h-20 rounded-md overflow-hidden border-2 ${
                       currentImageIndex === i
-                        ? "border-accent"
-                        : "border-border"
+                        ? 'border-accent'
+                        : 'border-border'
                     }`}
                   >
                     {img ? (
                       <Image
                         src={img}
-                        alt={`${product.title || "Product"} thumbnail ${i + 1}`}
+                        alt={`${product.title || 'Product'} thumbnail ${i + 1}`}
                         fill
                         sizes="80px"
                         className="object-cover"
@@ -204,12 +265,12 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
           <div className="space-y-6">
             <div>
               <p className="text-sm uppercase tracking-wide text-muted-foreground mb-2">
-                {product.collection || "Product"}
+                {product.collection || 'Product'}
               </p>
               <h1 className="font-serif text-4xl font-semibold text-foreground">
                 {product.title}
               </h1>
-              
+
               <div className="mt-4">
                 <PriceDisplay
                   currentPrice={displayPrice}
@@ -243,10 +304,10 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                           disabled={!isOptionAvailable}
                           className={`px-4 py-2 border rounded-md text-sm font-medium transition ${
                             isSelected
-                              ? "bg-foreground text-background border-foreground"
+                              ? 'bg-foreground text-background border-foreground'
                               : isOptionAvailable
-                              ? "border-border hover:border-foreground"
-                              : "border-border text-muted-foreground line-through cursor-not-allowed opacity-60"
+                              ? 'border-border hover:border-foreground'
+                              : 'border-border text-muted-foreground line-through cursor-not-allowed opacity-60'
                           }`}
                         >
                           {value}
@@ -266,23 +327,36 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
               />
             </div>
 
+            {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <Button
                 className={`flex-1 transition-all cursor-pointer ${
                   !isAvailable
-                    ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                    ? 'bg-secondary text-muted-foreground cursor-not-allowed'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 }`}
                 disabled={!isAvailable}
                 onClick={handleAddToCart}
               >
                 {addedToCart
-                  ? "Added to cart!"
+                  ? 'Added to cart!'
                   : isAvailable
-                  ? "Add to Cart"
+                  ? 'Add to Cart'
                   : activeVariant
-                  ? "Unavailable"
-                  : "Out of Stock"}
+                  ? 'Unavailable'
+                  : 'Out of Stock'}
+              </Button>
+
+              <Button
+                className={`flex-1 transition-all cursor-pointer ${
+                  !isAvailable || isProcessing
+                    ? 'bg-secondary text-muted-foreground cursor-not-allowed'
+                    : 'bg-foreground text-background hover:bg-foreground/90'
+                }`}
+                disabled={!isAvailable || isProcessing}
+                onClick={handleBuyNow}
+              >
+                {isProcessing ? 'Processing...' : 'Buy Now'}
               </Button>
 
               <Button
@@ -294,8 +368,8 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                 <Heart
                   className={`w-5 h-5 ${
                     isFavorite
-                      ? "fill-accent text-accent"
-                      : "text-foreground"
+                      ? 'fill-accent text-accent'
+                      : 'text-foreground'
                   }`}
                 />
               </Button>
@@ -307,6 +381,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                 <Share2 className="w-5 h-5 text-foreground" />
               </Button>
             </div>
+
             {!activeVariant && product.variants.length > 0 && (
               <p className="text-sm text-destructive text-center">
                 This combination is not available.
