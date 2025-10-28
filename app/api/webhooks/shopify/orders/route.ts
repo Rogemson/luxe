@@ -35,12 +35,14 @@ interface ShopifyOrder {
 }
 
 // Verify webhook signature
-function verifyWebhookSignature(
-  request: NextRequest,
-  body: string
-): boolean {
+function verifyWebhookSignature(request: NextRequest, body: string): boolean {
   const hmacHeader = request.headers.get('X-Shopify-Hmac-SHA256')
   const clientSecret = process.env.SHOPIFY_CLIENT_SECRET || ''
+
+  console.log('🔍 Debug Info:')
+  console.log('- HMAC Header:', hmacHeader ? '✅ PRESENT' : '❌ MISSING')
+  console.log('- Client Secret:', clientSecret ? '✅ SET' : '❌ MISSING')
+  console.log('- Secret value (first 10 chars):', clientSecret.substring(0, 10))
 
   if (!hmacHeader || !clientSecret) {
     console.error('❌ Missing HMAC header or client secret')
@@ -52,8 +54,11 @@ function verifyWebhookSignature(
     .update(body, 'utf8')
     .digest('base64')
 
+  console.log('- HMAC from header:', hmacHeader.substring(0, 20) + '...')
+  console.log('- HMAC calculated:', hash.substring(0, 20) + '...')
+  console.log('- Match:', hash === hmacHeader ? '✅ YES' : '❌ NO')
+
   const isValid = hash === hmacHeader
-  console.log(isValid ? '✅ Signature verified' : '❌ Signature invalid')
   return isValid
 }
 
