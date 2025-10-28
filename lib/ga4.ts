@@ -59,9 +59,11 @@ declare global {
       targetId: string,
       params?: GA4EventParams | GA4ConfigParams
     ) => void
-    dataLayer?: object[]
+    // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+    dataLayer?: Object[]
   }
 }
+
 
 /**
  * Ensure gtag is available and initialized
