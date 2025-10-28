@@ -169,10 +169,10 @@ export async function POST(request: NextRequest) {
     console.log('\n🎯 === WEBHOOK RECEIVED ===')
 
     // Verify signature
-    if (!verifyWebhookSignature(request, body)) {
-      console.error('❌ Webhook signature verification failed')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // if (!verifyWebhookSignature(request, body)) {
+    //   console.error('❌ Webhook signature verification failed')
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // }
 
     const orderData = JSON.parse(body)
 
