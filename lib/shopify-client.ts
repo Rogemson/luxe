@@ -59,6 +59,32 @@ interface ShopifyFetchResponse {
   }>
 }
 
+interface ShopifyCartLine {
+  node: {
+    id: string
+  }
+}
+
+interface ShopifyCartResponse {
+  data?: {
+    cart?: {
+      id: string
+      lines?: {
+        edges: ShopifyCartLine[]
+      }
+    }
+  }
+}
+
+interface ShopifyRemoveCartLinesResponse {
+  data?: {
+    cartLinesRemove?: {
+      userErrors?: { message: string }[]
+    }
+  }
+}
+
+
 // ✅ ADD CACHING
 const cache = new Map<string, CacheEntry<unknown>>()
 const CACHE_TTL = 5 * 60 * 1000
@@ -475,8 +501,10 @@ export async function createCart(
   return shopifyFetch(CART_CREATE_MUTATION, { input })
 }
 
-export async function fetchCart(cartId: string) {
-  return shopifyFetch(CART_QUERY, { cartId })
+export async function fetchCart(cartId: string): Promise<ShopifyCartResponse> {
+  // your fetch logic here
+  const res = await shopifyFetch(CART_QUERY, { cartId })
+  return res as ShopifyCartResponse
 }
 
 export async function addCartLines(cartId: string, lines: CartLineInput[]) {
@@ -487,8 +515,15 @@ export async function updateCartLines(cartId: string, lines: CartLineUpdateInput
   return shopifyFetch(CART_LINES_UPDATE_MUTATION, { cartId, lines })
 }
 
-export async function removeCartLines(cartId: string, lineIds: string[]) {
-  return shopifyFetch(CART_LINES_REMOVE_MUTATION, { cartId, lineIds })
+export async function removeCartLines(
+  cartId: string,
+  lineIds: string[]
+): Promise<ShopifyRemoveCartLinesResponse> {
+  const res = await shopifyFetch(CART_LINES_REMOVE_MUTATION, {
+    cartId,
+    lineIds,
+  })
+  return res as ShopifyRemoveCartLinesResponse
 }
 
 export async function updateBuyerIdentity(cartId: string, customerAccessToken: string) {

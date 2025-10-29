@@ -1,5 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { fetchCart, removeCartLines } from '@/lib/shopify-client'
+import { customerCarts } from '@/app/api/customer/cart/route'
 import crypto from 'crypto'
+
+interface ShopifyCartLine {
+  node: {
+    id: string
+  }
+}
+
+interface ShopifyCartResponse {
+  data?: {
+    cart?: {
+      id: string
+      lines?: {
+        edges: ShopifyCartLine[]
+      }
+    }
+  }
+}
+
+interface ShopifyRemoveCartLinesResponse {
+  data?: {
+    cartLinesRemove?: {
+      userErrors?: { message: string }[]
+    }
+  }
+}
 
 interface ShippingLine {
   price: string
@@ -151,10 +178,62 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
   }
 }
 
+async function clearCustomerCart(customerId: string) {
+  try {
+    // Get the cart ID associated with this customer
+    const cartId = customerCarts.get(customerId)
+    
+    if (!cartId) {
+      console.log(`⚠️ No cart found for customer ${customerId}`)
+      return
+    }
+
+    console.log(`🧹 Clearing cart ${cartId} for customer ${customerId}`)
+
+    // Fetch current cart to get line item IDs
+    const cartResponse = await fetchCart(cartId)
+    
+    if (!cartResponse?.data?.cart) {
+      console.log(`⚠️ Cart ${cartId} not found or already cleared`)
+      customerCarts.delete(customerId) // Remove stale reference
+      return
+    }
+
+    const lines = cartResponse.data.cart.lines?.edges || []
+    
+    if (lines.length === 0) {
+      console.log(`✅ Cart ${cartId} is already empty`)
+      customerCarts.delete(customerId)
+      return
+    }
+
+    // Extract all line item IDs
+    const lineIds = lines.map((edge: ShopifyCartLine) => edge.node.id)
+    console.log(`📦 Removing ${lineIds.length} items from cart`)
+
+    // Remove all cart lines
+    const removeResponse = await removeCartLines(cartId, lineIds)
+
+    const userErrors = removeResponse.data?.cartLinesRemove?.userErrors ?? []
+    if (userErrors.length > 0) {
+      console.warn('⚠️ Shopify returned user errors:', userErrors)
+      return
+    }
+
+    console.log(`✅ Successfully cleared cart ${cartId}`)
+
+    // Remove cart reference from storage
+    customerCarts.delete(customerId)
+    console.log(`✅ Removed cart reference for customer ${customerId}`)
+    
+  } catch (error) {
+    console.error('❌ Error clearing customer cart:', error)
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
-
     console.log('\n🎯 === WEBHOOK RECEIVED ===')
 
     // Verify signature
@@ -164,31 +243,38 @@ export async function POST(request: NextRequest) {
     }
 
     const orderData = JSON.parse(body)
-
     console.log('🛒 Order Details:')
     console.log('- Order #:', orderData.order_number)
     console.log('- Order ID:', orderData.id)
     console.log('- Status:', orderData.financial_status)
     console.log('- Customer:', orderData.customer?.email)
+    console.log('- Customer ID:', orderData.customer?.id)
     console.log('- Total:', orderData.total_price)
 
-    // Only track PAID orders
+    // Only process PAID orders
     if (orderData.financial_status !== 'paid') {
-      console.log('⏭️  Skipping non-paid order (status: ' + orderData.financial_status + ')\n')
+      console.log('⏭️ Skipping non-paid order (status: ' + orderData.financial_status + ')\n')
       return NextResponse.json({ skipped: true }, { status: 200 })
+    }
+
+    // Extract customer ID and clear their cart
+    const customerId = orderData.customer?.id?.toString()
+    if (customerId) {
+      await clearCustomerCart(customerId)
+    } else {
+      console.warn('⚠️ No customer ID found in order data')
     }
 
     // Track in GA4
     const tracked = await trackGA4Purchase(orderData)
-
     if (!tracked) {
       console.error('❌ Failed to track purchase in GA4')
       return NextResponse.json({ error: 'GA4 tracking failed' }, { status: 500 })
     }
 
     console.log('✅ === WEBHOOK PROCESSED SUCCESSFULLY ===\n')
-
     return NextResponse.json({ success: true }, { status: 200 })
+
   } catch (error) {
     console.error('❌ Webhook error:', error)
     return NextResponse.json(

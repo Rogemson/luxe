@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 // ⚠️ In production, use a real database (Prisma, Supabase, etc.)
 // This is in-memory storage for development
-const customerCarts = new Map<string, string>()
+export const customerCarts = new Map<string, string>()
 
 export async function POST(request: NextRequest) {
   try {
