@@ -3,7 +3,9 @@ import { Footer } from "@/components/footer"
 import { CollectionCard } from "@/components/collection-card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { getCollections } from "@/lib/shopify-client" // ✅ Fetch from Shopify
+import { getCollections } from "@/lib/shopify-client"
+
+import { NewsletterSignup } from '@/components/newsletter-signup'
 
 export const revalidate = 3600
 
@@ -109,27 +111,7 @@ export default async function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 md:py-28">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="font-serif text-4xl md:text-5xl font-semibold text-foreground mb-6">
-            Join Our Community
-          </h2>
-          <p className="text-lg text-foreground/60 mb-8 max-w-2xl mx-auto">
-            Subscribe to our newsletter for exclusive offers, style tips, and early access to new collections.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 px-4 py-3 bg-secondary border border-border rounded-md text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
-              Subscribe
-            </Button>
-          </div>
-        </div>
-      </section>
-
+      <NewsletterSignup />
       <Footer />
     </main>
   )

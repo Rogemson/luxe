@@ -9,6 +9,7 @@ import { SearchProvider } from '@/context/search'
 import { ProductsLoader } from '@/components/products-loader'
 import { FiltersProvider } from '@/context/filters'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import Script from 'next/script'
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -40,6 +41,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
         <link rel="dns-prefetch" href="https://cdn.shopify.com" />
         <link rel="preconnect" href="https://cdn.shopify.com" crossOrigin="anonymous" />
+
+        <Script
+          id="klaviyo-tracking"
+          strategy="afterInteractive"
+          src={`https://static.klaviyo.com/onsite/js/${process.env.NEXT_PUBLIC_KLAVIYO_PUBLIC_KEY}/klaviyo.js`}
+        />
       </head>
       <body className="font-sans antialiased">
         <CartProvider>
