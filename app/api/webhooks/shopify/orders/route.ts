@@ -9,25 +9,6 @@ interface ShopifyCartLine {
   }
 }
 
-interface ShopifyCartResponse {
-  data?: {
-    cart?: {
-      id: string
-      lines?: {
-        edges: ShopifyCartLine[]
-      }
-    }
-  }
-}
-
-interface ShopifyRemoveCartLinesResponse {
-  data?: {
-    cartLinesRemove?: {
-      userErrors?: { message: string }[]
-    }
-  }
-}
-
 interface ShippingLine {
   price: string
 }
@@ -180,11 +161,18 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
 
 async function clearCustomerCart(customerId: string) {
   try {
-    // Get the cart ID associated with this customer
-    const cartId = customerCarts.get(customerId)
+    // Try both numeric ID and GID format
+    let cartId = customerCarts.get(customerId)
+    
+    // If not found, try with GID format
+    if (!cartId) {
+      const gidFormat = `gid://shopify/Customer/${customerId}`
+      cartId = customerCarts.get(gidFormat)
+    }
     
     if (!cartId) {
       console.log(`⚠️ No cart found for customer ${customerId}`)
+      console.log(`📋 Available cart IDs:`, Array.from(customerCarts.keys()))
       return
     }
 
@@ -195,7 +183,9 @@ async function clearCustomerCart(customerId: string) {
     
     if (!cartResponse?.data?.cart) {
       console.log(`⚠️ Cart ${cartId} not found or already cleared`)
-      customerCarts.delete(customerId) // Remove stale reference
+      // Remove both possible formats
+      customerCarts.delete(customerId)
+      customerCarts.delete(`gid://shopify/Customer/${customerId}`)
       return
     }
 
@@ -203,7 +193,9 @@ async function clearCustomerCart(customerId: string) {
     
     if (lines.length === 0) {
       console.log(`✅ Cart ${cartId} is already empty`)
+      // Remove both possible formats
       customerCarts.delete(customerId)
+      customerCarts.delete(`gid://shopify/Customer/${customerId}`)
       return
     }
 
@@ -222,8 +214,9 @@ async function clearCustomerCart(customerId: string) {
 
     console.log(`✅ Successfully cleared cart ${cartId}`)
 
-    // Remove cart reference from storage
+    // Remove cart reference from storage (both formats)
     customerCarts.delete(customerId)
+    customerCarts.delete(`gid://shopify/Customer/${customerId}`)
     console.log(`✅ Removed cart reference for customer ${customerId}`)
     
   } catch (error) {
