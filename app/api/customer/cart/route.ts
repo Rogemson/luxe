@@ -15,8 +15,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    customerCarts.set(customerId, cartId)
-    console.log(`✅ Saved cart ${cartId} for customer ${customerId}`)
+    // Extract numeric ID from GID format if present
+    const numericCustomerId = customerId.includes('gid://shopify/Customer/') 
+      ? customerId.split('/').pop() 
+      : customerId
+
+    customerCarts.set(numericCustomerId, cartId)
+    console.log(`✅ Saved cart ${cartId} for customer ${numericCustomerId}`)
 
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -40,8 +45,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const cartId = customerCarts.get(customerId) || null
-    console.log(`✅ Retrieved cart ${cartId} for customer ${customerId}`)
+    // Extract numeric ID from Shopify GID format
+    const numericCustomerId =
+      customerId.includes("gid://shopify/Customer/")
+        ? customerId.split("/").pop()!
+        : customerId
+
+    const cartId = customerCarts.get(numericCustomerId) || null
+    console.log(`✅ Retrieved cart ${cartId} for customer ${numericCustomerId}`)
 
     return NextResponse.json({ cartId })
   } catch (error) {
