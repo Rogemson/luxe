@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-
-// ⚠️ In production, use a real database (Prisma, Supabase, etc.)
-// This is in-memory storage for development
-export const customerCarts = new Map<string, string>()
+import { customerCarts } from "@/lib/redis-client" // ✅ Changed from local Map
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +17,7 @@ export async function POST(request: NextRequest) {
       ? customerId.split('/').pop() 
       : customerId
 
-    customerCarts.set(numericCustomerId, cartId)
+    await customerCarts.set(numericCustomerId, cartId) // ✅ Now async
     console.log(`✅ Saved cart ${cartId} for customer ${numericCustomerId}`)
 
     return NextResponse.json({ success: true })
@@ -51,7 +48,7 @@ export async function GET(request: NextRequest) {
         ? customerId.split("/").pop()!
         : customerId
 
-    const cartId = customerCarts.get(numericCustomerId) || null
+    const cartId = await customerCarts.get(numericCustomerId) // ✅ Now async
     console.log(`✅ Retrieved cart ${cartId} for customer ${numericCustomerId}`)
 
     return NextResponse.json({ cartId })

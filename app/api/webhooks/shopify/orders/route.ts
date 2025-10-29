@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchCart, removeCartLines } from '@/lib/shopify-client'
-import { customerCarts } from '@/app/api/customer/cart/route'
+import { customerCarts } from "@/lib/redis-client"
 import crypto from 'crypto'
 
 interface ShopifyCartLine {
@@ -42,20 +42,16 @@ interface ShopifyOrder {
   customer: Customer
 }
 
-// Verify webhook signature
 function verifyWebhookSignature(request: NextRequest, body: string): boolean {
   const hmacHeader = request.headers.get('X-Shopify-Hmac-SHA256')
   const clientSecret = process.env.SHOPIFY_CLIENT_SECRET || ''
-
   if (!hmacHeader || !clientSecret) {
     return false
   }
-
   const hash = crypto
     .createHmac('sha256', clientSecret)
     .update(body, 'utf8')
     .digest('base64')
-
   const isValid = hash === hmacHeader
   return isValid
 }
@@ -140,6 +136,7 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
         },
       ],
     }
+
     const gaResponse = await fetch(
       `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
       {
@@ -154,38 +151,35 @@ async function trackGA4Purchase(orderData: ShopifyOrder): Promise<boolean> {
     }
 
     return true
-  } catch (error) {
+  } catch {
     return false
   }
 }
 
 async function clearCustomerCart(customerId: string) {
   try {
-    // Try both numeric ID and GID format
-    let cartId = customerCarts.get(customerId)
+    // ✅ Add await - Redis operations are async
+    let cartId = await customerCarts.get(customerId)
     
-    // If not found, try with GID format
     if (!cartId) {
       const gidFormat = `gid://shopify/Customer/${customerId}`
-      cartId = customerCarts.get(gidFormat)
+      cartId = await customerCarts.get(gidFormat) // ✅ Add await
     }
     
     if (!cartId) {
       console.log(`⚠️ No cart found for customer ${customerId}`)
-      console.log(`📋 Available cart IDs:`, Array.from(customerCarts.keys()))
       return
     }
 
     console.log(`🧹 Clearing cart ${cartId} for customer ${customerId}`)
 
-    // Fetch current cart to get line item IDs
     const cartResponse = await fetchCart(cartId)
     
     if (!cartResponse?.data?.cart) {
       console.log(`⚠️ Cart ${cartId} not found or already cleared`)
-      // Remove both possible formats
-      customerCarts.delete(customerId)
-      customerCarts.delete(`gid://shopify/Customer/${customerId}`)
+      // ✅ Add await to delete operations
+      await customerCarts.delete(customerId)
+      await customerCarts.delete(`gid://shopify/Customer/${customerId}`)
       return
     }
 
@@ -193,19 +187,17 @@ async function clearCustomerCart(customerId: string) {
     
     if (lines.length === 0) {
       console.log(`✅ Cart ${cartId} is already empty`)
-      // Remove both possible formats
-      customerCarts.delete(customerId)
-      customerCarts.delete(`gid://shopify/Customer/${customerId}`)
+      // ✅ Add await to delete operations
+      await customerCarts.delete(customerId)
+      await customerCarts.delete(`gid://shopify/Customer/${customerId}`)
       return
     }
 
-    // Extract all line item IDs
     const lineIds = lines.map((edge: ShopifyCartLine) => edge.node.id)
     console.log(`📦 Removing ${lineIds.length} items from cart`)
-
-    // Remove all cart lines
+    
     const removeResponse = await removeCartLines(cartId, lineIds)
-
+    
     const userErrors = removeResponse.data?.cartLinesRemove?.userErrors ?? []
     if (userErrors.length > 0) {
       console.warn('⚠️ Shopify returned user errors:', userErrors)
@@ -214,9 +206,9 @@ async function clearCustomerCart(customerId: string) {
 
     console.log(`✅ Successfully cleared cart ${cartId}`)
 
-    // Remove cart reference from storage (both formats)
-    customerCarts.delete(customerId)
-    customerCarts.delete(`gid://shopify/Customer/${customerId}`)
+    // ✅ Add await to delete operations
+    await customerCarts.delete(customerId)
+    await customerCarts.delete(`gid://shopify/Customer/${customerId}`)
     console.log(`✅ Removed cart reference for customer ${customerId}`)
     
   } catch (error) {
@@ -227,49 +219,27 @@ async function clearCustomerCart(customerId: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
-    console.log('\n🎯 === WEBHOOK RECEIVED ===')
-
-    // Verify signature
     if (!verifyWebhookSignature(request, body)) {
-      console.error('❌ Webhook signature verification failed')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const orderData = JSON.parse(body)
-    console.log('🛒 Order Details:')
-    console.log('- Order #:', orderData.order_number)
-    console.log('- Order ID:', orderData.id)
-    console.log('- Status:', orderData.financial_status)
-    console.log('- Customer:', orderData.customer?.email)
-    console.log('- Customer ID:', orderData.customer?.id)
-    console.log('- Total:', orderData.total_price)
-
-    // Only process PAID orders
     if (orderData.financial_status !== 'paid') {
-      console.log('⏭️ Skipping non-paid order (status: ' + orderData.financial_status + ')\n')
       return NextResponse.json({ skipped: true }, { status: 200 })
     }
 
-    // Extract customer ID and clear their cart
     const customerId = orderData.customer?.id?.toString()
     if (customerId) {
       await clearCustomerCart(customerId)
-    } else {
-      console.warn('⚠️ No customer ID found in order data')
     }
 
-    // Track in GA4
     const tracked = await trackGA4Purchase(orderData)
     if (!tracked) {
-      console.error('❌ Failed to track purchase in GA4')
       return NextResponse.json({ error: 'GA4 tracking failed' }, { status: 500 })
     }
 
-    console.log('✅ === WEBHOOK PROCESSED SUCCESSFULLY ===\n')
     return NextResponse.json({ success: true }, { status: 200 })
-
-  } catch (error) {
-    console.error('❌ Webhook error:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }
