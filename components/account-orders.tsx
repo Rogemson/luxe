@@ -1,9 +1,9 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import { Package, Calendar, DollarSign, ChevronDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect } from "react"
+import Image from "next/image"
+import { Package, Calendar, DollarSign, ChevronDown } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface OrderItem {
   id: string
@@ -36,33 +36,33 @@ export function AccountOrders() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const token = localStorage.getItem('shopifyCustomerToken')
-        
+        const token = localStorage.getItem("shopifyCustomerToken")
+
         if (!token) {
           setOrders([])
           setLoading(false)
           return
         }
 
-        console.log('📦 [ORDERS] Fetching orders...')
+        console.log("📦 [ORDERS] Fetching orders...")
 
-        const response = await fetch('/api/auth/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token })
+        const response = await fetch("/api/auth/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
         })
 
         const data: OrdersApiResponse = await response.json()
 
         if (response.ok && data.orders) {
           setOrders(data.orders)
-          console.log('✅ [ORDERS] Loaded:', data.orders.length, 'orders')
+          console.log("✅ [ORDERS] Loaded:", data.orders.length, "orders")
         } else {
-          console.error('❌ [ORDERS] Error:', data.error)
+          console.error("❌ [ORDERS] Error:", data.error)
           setOrders([])
         }
       } catch (error) {
-        console.error('❌ [ORDERS] Exception:', error)
+        console.error("❌ [ORDERS] Exception:", error)
         setOrders([])
       } finally {
         setLoading(false)
@@ -111,16 +111,20 @@ export function AccountOrders() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    order.status === 'FULFILLED' 
-                      ? 'bg-green-100 text-green-800' 
-                      : order.status === 'PARTIALLY_FULFILLED'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      order.status === "FULFILLED"
+                        ? "bg-green-100 text-green-800"
+                        : order.status === "PARTIALLY_FULFILLED"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
                     {order.status}
                   </span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedOrder === order.id ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${expandedOrder === order.id ? "rotate-180" : ""}`}
+                  />
                 </div>
               </button>
 
@@ -133,13 +137,7 @@ export function AccountOrders() {
                         <div key={item.id} className="flex items-start gap-4">
                           {item.image && (
                             <div className="relative w-12 h-12 rounded overflow-hidden">
-                              <Image 
-                                src={item.image} 
-                                alt={item.title}
-                                fill
-                                sizes="48px"
-                                className="object-cover"
-                              />
+                              <Image src={item.image} alt={item.title} fill sizes="48px" className="object-cover" />
                             </div>
                           )}
                           <div className="flex-1">
@@ -150,7 +148,7 @@ export function AccountOrders() {
                       ))}
                     </div>
                   </div>
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full bg-transparent">
                     View Order Details
                   </Button>
                 </div>

@@ -1,10 +1,10 @@
-'use client'
+"use client"
 
-import Image from 'next/image'
-import Link from 'next/link'
-import { Heart } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useWishlist } from '@/context/wishlist'
+import Image from "next/image"
+import Link from "next/link"
+import { Heart } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useWishlist } from "@/context/wishlist"
 
 export function AccountWishlist() {
   const { wishlist, removeFromWishlist } = useWishlist()
@@ -12,9 +12,7 @@ export function AccountWishlist() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-foreground mb-2">
-          Wishlist
-        </h2>
+        <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-foreground mb-2">Wishlist</h2>
         <p className="text-muted-foreground">Your saved items for later</p>
       </div>
 
@@ -52,9 +50,7 @@ export function AccountWishlist() {
                   </h3>
                 </Link>
                 <div className="flex items-center justify-between gap-4">
-                  <p className="font-serif text-lg font-semibold text-foreground">
-                    ${item.price.toFixed(2)}
-                  </p>
+                  <p className="font-serif text-lg font-semibold text-foreground">${item.price.toFixed(2)}</p>
                   <Link href={`/products/${item.handle}`}>
                     <Button variant="outline" size="sm" className="gap-2 bg-transparent">
                       View Product

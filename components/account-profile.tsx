@@ -1,8 +1,10 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { Mail, Phone, MapPin, Edit2, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { Mail, Phone, MapPin, Edit2, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface CustomerData {
   firstName: string
@@ -14,11 +16,11 @@ interface CustomerData {
 
 export function AccountProfile({ email }: { email: string }) {
   const [profile, setProfile] = useState<CustomerData>({
-    firstName: '',
-    lastName: '',
+    firstName: "",
+    lastName: "",
     email: email,
-    phone: '',
-    address: ''
+    phone: "",
+    address: "",
   })
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -27,19 +29,19 @@ export function AccountProfile({ email }: { email: string }) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('shopifyCustomerToken')
-        
+        const token = localStorage.getItem("shopifyCustomerToken")
+
         if (!token) {
           setLoading(false)
           return
         }
 
-        console.log('👤 [PROFILE] Fetching customer data...')
+        console.log("👤 [PROFILE] Fetching customer data...")
 
-        const response = await fetch('/api/auth/customer', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token })
+        const response = await fetch("/api/auth/customer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
         })
 
         const data = await response.json()
@@ -47,20 +49,20 @@ export function AccountProfile({ email }: { email: string }) {
         if (response.ok && data.customer) {
           const customer = data.customer
           setProfile({
-            firstName: customer.firstName || '',
-            lastName: customer.lastName || '',
+            firstName: customer.firstName || "",
+            lastName: customer.lastName || "",
             email: customer.email || email,
-            phone: customer.phone || '',
+            phone: customer.phone || "",
             address: customer.defaultAddress
               ? `${customer.defaultAddress.address1}, ${customer.defaultAddress.city}`
-              : ''
+              : "",
           })
-          console.log('✅ [PROFILE] Loaded:', customer.email)
+          console.log("✅ [PROFILE] Loaded:", customer.email)
         } else {
-          console.error('❌ [PROFILE] Error:', data.error)
+          console.error("❌ [PROFILE] Error:", data.error)
         }
       } catch (error) {
-        console.error('❌ [PROFILE] Exception:', error)
+        console.error("❌ [PROFILE] Exception:", error)
       } finally {
         setLoading(false)
       }
@@ -71,14 +73,14 @@ export function AccountProfile({ email }: { email: string }) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setProfile(prev => ({ ...prev, [name]: value }))
+    setProfile((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleSave = async () => {
     setSaving(true)
     // Save to localStorage for now
-    localStorage.setItem('customerProfile', JSON.stringify(profile))
-    console.log('✅ Profile saved')
+    localStorage.setItem("customerProfile", JSON.stringify(profile))
+    console.log("✅ Profile saved")
     setEditing(false)
     setSaving(false)
   }
@@ -95,11 +97,7 @@ export function AccountProfile({ email }: { email: string }) {
           <p className="text-muted-foreground">Manage your account details</p>
         </div>
         {!editing && (
-          <Button
-            onClick={() => setEditing(true)}
-            variant="outline"
-            size="sm"
-          >
+          <Button onClick={() => setEditing(true)} variant="outline" size="sm">
             <Edit2 className="w-4 h-4 mr-2" />
             Edit
           </Button>
@@ -177,18 +175,10 @@ export function AccountProfile({ email }: { email: string }) {
 
         {editing && (
           <div className="flex gap-2 pt-4">
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1"
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
+            <Button onClick={handleSave} disabled={saving} className="flex-1">
+              {saving ? "Saving..." : "Save Changes"}
             </Button>
-            <Button
-              onClick={() => setEditing(false)}
-              variant="outline"
-              className="flex-1"
-            >
+            <Button onClick={() => setEditing(false)} variant="outline" className="flex-1">
               <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>

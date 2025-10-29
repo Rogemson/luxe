@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import { User, ShoppingBag, Heart, Settings, LogOut } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { User, ShoppingBag, Heart, Settings, LogOut } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface AccountSidebarProps {
   activeTab: string
@@ -10,17 +10,12 @@ interface AccountSidebarProps {
   onLogout: () => void
 }
 
-export function AccountSidebar({
-  activeTab,
-  onTabChange,
-  email,
-  onLogout
-}: AccountSidebarProps) {
+export function AccountSidebar({ activeTab, onTabChange, email, onLogout }: AccountSidebarProps) {
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'orders', label: 'Orders', icon: ShoppingBag },
-    { id: 'wishlist', label: 'Wishlist', icon: Heart },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: "profile", label: "Profile", icon: User },
+    { id: "orders", label: "Orders", icon: ShoppingBag },
+    { id: "wishlist", label: "Wishlist", icon: Heart },
+    { id: "settings", label: "Settings", icon: Settings },
   ]
 
   return (
@@ -35,16 +30,14 @@ export function AccountSidebar({
 
       {/* Navigation */}
       <nav className="space-y-1">
-        {tabs.map(tab => {
+        {tabs.map((tab) => {
           const Icon = tab.icon
           return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-foreground hover:bg-muted'
+                activeTab === tab.id ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -55,11 +48,7 @@ export function AccountSidebar({
       </nav>
 
       {/* Logout Button */}
-      <Button
-        onClick={onLogout}
-        variant="outline"
-        className="w-full justify-start"
-      >
+      <Button onClick={onLogout} variant="outline" className="w-full justify-start bg-transparent">
         <LogOut className="w-4 h-4 mr-2" />
         Logout
       </Button>
