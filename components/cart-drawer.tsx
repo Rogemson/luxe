@@ -219,34 +219,8 @@ export function CartDrawer() {
           </div>
         ) : (
           <>
-            {/* --- Stock Issues Banner (from functional file) --- */}
-            {stockIssues.hasIssues && (
-              <div className="bg-warning/10 border-b border-warning/30 p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                  <div className="flex-1 text-xs space-y-1">
-                    {stockIssues.hasUnavailableItems && (
-                      <p className="font-medium text-warning">
-                        {stockIssues.unavailableItems.length} item(s) out of
-                        stock
-                      </p>
-                    )}
-                    {stockIssues.hasExcessQuantity && (
-                      <p className="text-warning/80">
-                        Some quantities exceed available stock
-                      </p>
-                    )}
-                    <p className="text-muted-foreground">
-                      Unavailable items will be excluded and quantities adjusted
-                      at checkout.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* --- Polished ScrollArea with functional item logic --- */}
-            <ScrollArea className="flex-1 px-6">
+            <ScrollArea className="h-full px-6 pb-60">
               <div className="space-y-4 py-4">
                 {cart.map((item) => {
                   const itemIsOutOfStock = !item.availableForSale
@@ -374,9 +348,32 @@ export function CartDrawer() {
                 })}
               </div>
             </ScrollArea>
-
             {/* --- Polished Footer (with functional disabled logic) --- */}
-            <div className="border-t p-6 space-y-4">
+            <div className="sticky bottom-0 border-t bg-white p-6 space-y-4">
+              {/* --- Stock Issues Banner (from functional file) --- */}
+              {stockIssues.hasIssues && (
+                <div className="bg-warning/10 border-b border-warning/30 p-4 rounded-md">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                    <div className="flex-1 text-xs space-y-1">
+                      {stockIssues.hasUnavailableItems && (
+                        <p className="font-medium text-warning">
+                          {stockIssues.unavailableItems.length} item(s) out of stock
+                        </p>
+                      )}
+                      {stockIssues.hasExcessQuantity && (
+                        <p className="text-warning/80">
+                          Some quantities exceed available stock
+                        </p>
+                      )}
+                      <p className="text-muted-foreground">
+                        Unavailable items will be excluded and quantities adjusted at checkout.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between items-center text-lg font-semibold">
                 <span>Subtotal</span>
                 <span>${totalPrice.toFixed(2)}</span>
