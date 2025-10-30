@@ -12,6 +12,7 @@ import { GoogleAnalytics } from '@next/third-parties/google'
 import { OfflineGuard } from '@/components/offline-guard'
 import { Toaster } from 'sonner'
 import Script from 'next/script'
+import { defaultMetadata } from '@/lib/seo'
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -25,8 +26,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "LUXE - Premium Clothing Store",
-  description: "Discover our curated collection of premium clothing designed for the modern lifestyle.",
+  ...defaultMetadata,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

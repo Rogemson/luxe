@@ -7,20 +7,20 @@ import { CollectionProductGrid } from "@/components/collection-product-grid"
 
 interface CollectionDetailPageProps {
   params: Promise<{
-    id: string
+    handle: string
   }>
 }
 
 export default async function CollectionDetailPage({ params }: CollectionDetailPageProps) {
-  const { id } = await params
+  const { handle } = await params
 
-  if (!id) {
+  if (!handle) {
     notFound()
   }
 
   const [collection, products] = await Promise.all([
-    getCollectionByHandle(id),
-    getCollectionProducts(id),
+    getCollectionByHandle(handle),
+    getCollectionProducts(handle),
   ])
 
   if (!collection) {
