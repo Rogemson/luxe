@@ -26,7 +26,14 @@ export async function generateMetadata({
   const title = `${product.title} - Buy Now | ${siteName}`
   const description = `${product.description?.substring(0, 160) || product.title} - $${product.price.toFixed(2)}`
   const url = `${siteUrl}/products/${handle}`
-  const image = product.image || `${siteUrl}/og-image.png`
+
+  // ✅ Dynamic OG Image URL
+  const ogImageUrl = `${siteUrl}/api/og?${new URLSearchParams({
+    title: product.title,
+    price: `$${product.price.toFixed(2)}`,
+    image: product.image || `${siteUrl}/og-image.png`,
+    availability: product.availableForSale ? 'In Stock' : 'Out of Stock',
+  }).toString()}`
 
   return {
     title,
@@ -43,7 +50,7 @@ export async function generateMetadata({
       siteName,
       images: [
         {
-          url: image,
+          url: ogImageUrl, // ✅ Dynamic OG image
           width: 1200,
           height: 630,
           alt: product.title,
@@ -54,7 +61,7 @@ export async function generateMetadata({
       card: 'summary_large_image',
       title,
       description,
-      images: [image],
+      images: [ogImageUrl], // ✅ Dynamic OG image
     },
     alternates: {
       canonical: url,
