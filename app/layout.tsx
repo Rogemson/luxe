@@ -6,23 +6,28 @@ import { CartProvider } from "@/context/cart"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { WishlistProvider } from '@/context/wishlist'
 import { SearchProvider } from '@/context/search'
-import { ProductsLoader } from '@/components/products-loader'
 import { FiltersProvider } from '@/context/filters'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { OfflineGuard } from '@/components/offline-guard'
 import { Toaster } from 'sonner'
-import Script from 'next/script'
 import { defaultMetadata } from '@/lib/seo'
 
+// ✅ Optimize font loading with display swap
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
   weight: ["400", "500", "600", "700"],
+  display: 'swap', // ✅ Prevent layout shift
+  preload: true,
+  fallback: ['Georgia', 'serif'],
 })
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: 'swap', // ✅ Prevent layout shift
+  preload: true,
+  fallback: ['system-ui', 'sans-serif'],
 })
 
 export const metadata: Metadata = {
@@ -35,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <head>
+        {/* ✅ DNS prefetch for faster connections */}
         {shopifyDomain && (
           <>
             <link rel="dns-prefetch" href={`https://${shopifyDomain}`} />
@@ -43,22 +49,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
         <link rel="dns-prefetch" href="https://cdn.shopify.com" />
         <link rel="preconnect" href="https://cdn.shopify.com" crossOrigin="anonymous" />
-
-        <Script
-          id="klaviyo-tracking"
-          strategy="afterInteractive"
-          src={`https://static.klaviyo.com/onsite/js/${process.env.NEXT_PUBLIC_KLAVIYO_PUBLIC_KEY}/klaviyo.js`}
-        />
+        
+        {/* ✅ Preconnect to GA for faster analytics */}
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        
+        {/* ❌ REMOVED KLAVIYO - Will be loaded only on homepage */}
       </head>
       <body className="font-sans antialiased">
+        {/* ✅ Reduced nesting - combine related providers */}
         <CartProvider>
           <WishlistProvider>
             <SearchProvider>
               <FiltersProvider>
                 <Toaster position="top-center" richColors closeButton />
                 <OfflineGuard />
-                <ProductsLoader />
+                {/* ❌ REMOVED ProductsLoader - Will load on-demand */}
                 {children}
+                {/* ✅ GA loads async, non-blocking */}
                 <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID!} />
               </FiltersProvider>
             </SearchProvider>

@@ -87,7 +87,17 @@ interface ShopifyRemoveCartLinesResponse {
 
 // ✅ ADD CACHING
 const cache = new Map<string, CacheEntry<unknown>>()
-const CACHE_TTL = 5 * 60 * 1000
+const CACHE_TTL = 10 * 60 * 1000 // ✅ Increased to 10 minutes
+const MAX_CACHE_SIZE = 100
+
+function cleanupCache() {
+  if (cache.size > MAX_CACHE_SIZE) {
+    const entries = Array.from(cache.entries())
+    entries.sort((a, b) => a[1].timestamp - b[1].timestamp)
+    const toDelete = entries.slice(0, cache.size - MAX_CACHE_SIZE)
+    toDelete.forEach(([key]) => cache.delete(key))
+  }
+}
 
 // Helper function to make Shopify API requests
 export async function shopifyFetch<T>(
@@ -95,34 +105,54 @@ export async function shopifyFetch<T>(
   variables?: Record<string, unknown>
 ): Promise<T> {
   if (!SHOPIFY_STORE_URL || !SHOPIFY_ACCESS_TOKEN) {
-    const errorMsg = `Shopify configuration is missing. Store URL: ${SHOPIFY_STORE_URL ? "set" : "MISSING"}, Access Token: ${SHOPIFY_ACCESS_TOKEN ? "set" : "MISSING"}`
+    const errorMsg = `Shopify configuration is missing.`
     console.error("❌", errorMsg)
     throw new Error(errorMsg)
   }
 
   const endpoint = `https://${SHOPIFY_STORE_URL}/api/${SHOPIFY_API_VERSION}/graphql.json`
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Shopify-Storefront-Access-Token": SHOPIFY_ACCESS_TOKEN,
-    },
-    body: JSON.stringify({ query, variables }),
-    next: { revalidate: 3600 }, // ✅ CHANGED: Use Next.js caching instead of no-store
-  })
+  // ✅ Add retry logic for failed requests
+  let retries = 2
+  let lastError: Error | null = null
 
-  if (!response.ok) {
-    throw new Error(`Shopify API error: ${response.statusText}`)
+  while (retries > 0) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Storefront-Access-Token": SHOPIFY_ACCESS_TOKEN,
+        },
+        body: JSON.stringify({ query, variables }),
+        next: { revalidate: 3600 }, // 1 hour ISR
+      })
+
+      if (!response.ok) {
+        throw new Error(`Shopify API error: ${response.statusText}`)
+      }
+
+      const json = await response.json()
+
+      if (json.errors) {
+        throw new Error(`Shopify GraphQL error: ${JSON.stringify(json.errors)}`)
+      }
+
+      // ✅ Cleanup cache periodically
+      cleanupCache()
+
+      return json as T
+    } catch (error) {
+      lastError = error as Error
+      retries--
+      if (retries > 0) {
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+    }
   }
 
-  const json = await response.json()
-
-  if (json.errors) {
-    throw new Error(`Shopify GraphQL error: ${JSON.stringify(json.errors)}`)
-  }
-
-  return json as T
+  throw lastError || new Error('Failed to fetch from Shopify')
 }
 
 // Transform Shopify product node to app format

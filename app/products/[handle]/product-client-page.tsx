@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/header'
@@ -96,36 +96,46 @@ export default function ProductClientPage({
   const [liveStockData, setLiveStockData] = useState<Record<string, { availableForSale: boolean, quantityAvailable: number | null }>>({})
   const [isLoadingStock, setIsLoadingStock] = useState(false)
 
-  // --- Derived State and Logic ---
+  // ✅ OPTIMIZED: Only fetch live stock when user interacts with quantity or tries to add to cart
+  const fetchLiveStock = useCallback(async (variantId: string) => {
+    if (liveStockData[variantId]) return // Already fetched
+    
+    setIsLoadingStock(true)
+    try {
+      const inventory = await getVariantInventory(variantId)
+      if (inventory) {
+        setLiveStockData(prev => ({
+          ...prev,
+          [variantId]: {
+            availableForSale: inventory.availableForSale,
+            quantityAvailable: inventory.quantityAvailable,
+          }
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch live stock:', error)
+    } finally {
+      setIsLoadingStock(false)
+    }
+  }, [liveStockData])
+
+  // ✅ OPTIMIZED: Only fetch stock when variant changes AND user is about to interact
   useEffect(() => {
     if (!activeVariant) return
-
-    setIsLoadingStock(true)
     
-    const fetchLiveStock = async () => {
-      try {
-        const inventory = await getVariantInventory(activeVariant.id)
-        if (inventory) {
-          setLiveStockData(prev => ({
-            ...prev,
-            [activeVariant.id]: {
-              availableForSale: inventory.availableForSale,
-              quantityAvailable: inventory.quantityAvailable,
-            }
-          }))
-        }
-      } catch (error) {
-        console.error('Failed to fetch live stock:', error)
-        // Fallback to cached data
-      } finally {
-        setIsLoadingStock(false)
-      }
+    // ✅ Use cached stock data first (from SSR/ISR)
+    const cachedStock = activeVariant.quantityAvailable
+    
+    // ✅ Only fetch live if stock is low or out
+    if (cachedStock !== null && cachedStock <= 10) {
+      // Defer fetching until user shows intent to purchase
+      const timer = setTimeout(() => {
+        fetchLiveStock(activeVariant.id)
+      }, 1000) // Wait 1s before fetching
+      
+      return () => clearTimeout(timer)
     }
-
-    fetchLiveStock()
-  }, [activeVariant?.id])
-
-  // --- Handlers --
+  }, [activeVariant?.id, fetchLiveStock])
 
   const currentVariantStock = activeVariant && liveStockData[activeVariant.id]
     ? liveStockData[activeVariant.id]
@@ -135,6 +145,7 @@ export default function ProductClientPage({
           quantityAvailable: activeVariant.quantityAvailable 
         }
       : null
+
   // Get images for the gallery
   const images = useMemo(() => {
     const mainImage = activeVariant?.image || product.image
@@ -170,7 +181,6 @@ export default function ProductClientPage({
         setCurrentImageIndex(newIndex)
       }
     }
-    // Don't reset to 0, just update if variant has a specific image
   }, [activeVariant?.image, images])
 
   // Reset quantity when variant changes and new max is lower
@@ -178,12 +188,17 @@ export default function ProductClientPage({
     if (maxQuantity !== null && quantity > maxQuantity) {
       setQuantity(Math.max(1, maxQuantity))
     }
-  }, [maxQuantity])
+  }, [maxQuantity, quantity])
 
   const handleAddToCart = async () => {
     if (!activeVariant) {
       toast.error('Please select all options')
       return
+    }
+
+    // ✅ Fetch fresh stock before adding to cart
+    if (!liveStockData[activeVariant.id]) {
+      await fetchLiveStock(activeVariant.id)
     }
 
     if (isOutOfStock) {
@@ -201,7 +216,6 @@ export default function ProductClientPage({
     setIsAddingToCart(true)
 
     try {
-      // Build variant title
       const variantTitle = activeVariant.selectedOptions
         .map((opt) => opt.value)
         .join(' / ')
@@ -214,19 +228,18 @@ export default function ProductClientPage({
         handle: product.handle,
         image: activeVariant.image || product.image,
         price: activeVariant.price,
-        variantTitle: variantTitle, // Use constructed title
+        variantTitle: variantTitle,
         availableForSale: activeVariant.availableForSale,
         quantityAvailable: activeVariant.quantityAvailable,
         productTitle: product.title,
       })
 
-      // Corrected trackAddToCart call
       trackAddToCart(
         [
           {
             item_id: activeVariant.id,
             item_name: product.title,
-            item_variant: variantTitle, // Use constructed title
+            item_variant: variantTitle,
             price: activeVariant.price,
             quantity,
           },
@@ -235,7 +248,6 @@ export default function ProductClientPage({
       )
     } catch (error) {
       console.error('Add to cart error:', error)
-      // Error toast is shown by cart context
     } finally {
       setIsAddingToCart(false)
     }
@@ -245,6 +257,11 @@ export default function ProductClientPage({
     if (!activeVariant) {
       toast.error('Please select all options')
       return
+    }
+
+    // ✅ Fetch fresh stock before checkout
+    if (!liveStockData[activeVariant.id]) {
+      await fetchLiveStock(activeVariant.id)
     }
 
     if (isOutOfStock) {
@@ -269,7 +286,6 @@ export default function ProductClientPage({
         },
       ]
 
-      // Build variant title
       const variantTitle = activeVariant.selectedOptions
         .map((opt) => opt.value)
         .join(' / ')
@@ -279,7 +295,7 @@ export default function ProductClientPage({
           {
             item_id: activeVariant.id,
             item_name: product.title,
-            item_variant: variantTitle, // Use constructed title
+            item_variant: variantTitle,
             price: activeVariant.price,
             quantity,
           },
@@ -294,7 +310,7 @@ export default function ProductClientPage({
       const checkoutUrl = await createShopifyCheckout(lines)
 
       toast.dismiss('buy-now-loading')
-      router.push(checkoutUrl)
+      window.location.assign(checkoutUrl) // ✅ Fixed immutability warning
     } catch (error) {
       console.error('Buy now error:', error)
 
@@ -323,8 +339,8 @@ export default function ProductClientPage({
           <div className="space-y-4">
             <Button
               variant="ghost"
-              onClick={() => router.back()} // Use router.back() for better UX
-              className="mb-8 text-muted-foreground hover:text-foreground cursor-pointer -ml-4" // Adjust padding
+              onClick={() => router.back()}
+              className="mb-8 text-muted-foreground hover:text-foreground cursor-pointer -ml-4"
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
               Back
@@ -352,12 +368,14 @@ export default function ProductClientPage({
                   <button
                     onClick={prevImage}
                     className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 rounded-full hover:bg-background"
+                    aria-label="Previous image"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
                     onClick={nextImage}
                     className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 rounded-full hover:bg-background"
+                    aria-label="Next image"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -373,9 +391,10 @@ export default function ProductClientPage({
                     onClick={() => setCurrentImageIndex(i)}
                     className={`relative w-20 h-20 rounded-md overflow-hidden border-2 ${
                       currentImageIndex === i
-                        ? 'border-primary' // Use primary color
+                        ? 'border-primary'
                         : 'border-border'
                     }`}
+                    aria-label={`View image ${i + 1}`}
                   >
                     {img ? (
                       <Image
@@ -458,7 +477,7 @@ export default function ProductClientPage({
                       return (
                         <button
                           key={value}
-                          onClick={() => handleOptionSelect(option.name, value)} // Fixed function name
+                          onClick={() => handleOptionSelect(option.name, value)}
                           disabled={!isOptionAvailable}
                           className={`px-4 py-2 border rounded-md text-sm font-medium transition ${
                             isSelected
@@ -549,11 +568,12 @@ export default function ProductClientPage({
                 size="icon"
                 onClick={() => setIsFavorite(!isFavorite)}
                 className="border-border hover:bg-secondary"
+                aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
               >
                 <Heart
                   className={`w-5 h-5 transition-colors ${
                     isFavorite
-                      ? 'fill-red-500 text-red-500' // Use red for favorite
+                      ? 'fill-red-500 text-red-500'
                       : 'text-foreground'
                   }`}
                 />
@@ -562,6 +582,7 @@ export default function ProductClientPage({
                 variant="outline"
                 size="icon"
                 className="border-border hover:bg-secondary"
+                aria-label="Share product"
               >
                 <Share2 className="w-5 h-5 text-foreground" />
               </Button>

@@ -88,10 +88,11 @@ export function ProductCard({
               src={image || "/placeholder.svg"}
               alt={title}
               fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               loading={isPriority ? "eager" : "lazy"}
               priority={isPriority}
               className="object-cover group-hover:scale-105 transition-transform duration-300"
+              quality={85}
             />
 
             {compareAtPrice && compareAtPrice > price && (

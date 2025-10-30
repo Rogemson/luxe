@@ -47,6 +47,7 @@ export function CollectionCard({
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             loading={isAboveTheFold ? "eager" : "lazy"}
             priority={isAboveTheFold}
+            quality={85}
           />
           <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
             <div className="text-center">

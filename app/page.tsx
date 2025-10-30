@@ -6,6 +6,7 @@ import Link from "next/link"
 import { getCollections } from "@/lib/shopify-client"
 import { DataErrorState } from "@/components/data-error-state"
 import { NewsletterSignup } from '@/components/newsletter-signup'
+import Script from 'next/script' // ✅ Added for Klaviyo
 
 export const revalidate = 3600
 
@@ -15,6 +16,13 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-background">
+      {/* ✅ Klaviyo loads ONLY on homepage, after everything else */}
+      <Script
+        id="klaviyo-tracking"
+        strategy="lazyOnload" // ✅ Changed from afterInteractive - loads after page is interactive
+        src={`https://static.klaviyo.com/onsite/js/${process.env.NEXT_PUBLIC_KLAVIYO_PUBLIC_KEY}/klaviyo.js`}
+      />
+      
       <Header />
 
       {/* Hero Section */}
