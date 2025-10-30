@@ -1,3 +1,5 @@
+// cart-queries.ts
+
 export const CART_CREATE_MUTATION = `
   mutation cartCreate($input: CartInput) {
     cartCreate(input: $input) {
@@ -17,6 +19,8 @@ export const CART_CREATE_MUTATION = `
                     amount
                     currencyCode
                   }
+                  availableForSale
+                  quantityAvailable
                   product {
                     title
                     handle
@@ -66,6 +70,8 @@ export const CART_QUERY = `
                   amount
                   currencyCode
                 }
+                availableForSale
+                quantityAvailable
                 product {
                   title
                   handle
@@ -117,6 +123,8 @@ export const CART_LINES_ADD_MUTATION = `
                     amount
                     currencyCode
                   }
+                  availableForSale
+                  quantityAvailable
                   product {
                     title
                     handle
@@ -144,6 +152,7 @@ export const CART_LINES_ADD_MUTATION = `
   }
 `
 
+// Keep CART_LINES_UPDATE_MUTATION, CART_LINES_REMOVE_MUTATION, and CART_BUYER_IDENTITY_UPDATE_MUTATION as they are
 export const CART_LINES_UPDATE_MUTATION = `
   mutation cartLinesUpdate($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
     cartLinesUpdate(cartId: $cartId, lines: $lines) {

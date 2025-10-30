@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Heart, ShoppingCart } from "lucide-react"
 import { PriceDisplay, SaleBadge } from "@/components/sale-badge"
 import { useWishlist } from "@/context/wishlist"
-import { QuickAddModal } from "@/components/product-modal"
+import { ProductModal } from "@/components/product-modal"
 import { trackSelectItem } from "@/lib/ga4"
 import type { ShopifyProduct } from "@/lib/shopify-types"
 
@@ -118,9 +118,11 @@ export function ProductCard({
               />
             </button>
 
+            {/* --- CHANGE 1: Desktop "Quick Add" --- */}
+            {/* Added `hidden md:flex` to hide this button on mobile */}
             <button
               onClick={handleQuickAdd}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-foreground text-background rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 hover:bg-foreground/90 z-10"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-foreground text-background rounded-full opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-center gap-2 hover:bg-foreground/90 z-10"
               aria-label="Quick add to cart"
             >
               <ShoppingCart className="w-4 h-4" />
@@ -138,18 +140,21 @@ export function ProductCard({
 
           <div className="flex items-start justify-between gap-2">
             <Link href={`/products/${id}`} onClick={handleProductClick}>
-              <h3 className="font-serif text-lg font-semibold text-foreground group-hover:text-accent transition-colors">
+              <h3 className="font-serif text-lg font-semibold text-foreground ">
                 {title}
               </h3>
             </Link>
 
-            <button
-              onClick={handleQuickAdd}
+            {/* --- CHANGE 2: Mobile Button --- */}
+            {/* Converted from <button> to <Link> to navigate to the product page instead of opening the modal */}
+            <Link
+              href={`/products/${id}`}
+              onClick={handleProductClick}
               className="md:hidden p-2 hover:bg-secondary rounded-full transition-colors shrink-0"
-              aria-label="Quick add to cart"
+              aria-label="View product"
             >
               <ShoppingCart className="w-5 h-5 text-foreground" />
-            </button>
+            </Link>
           </div>
 
           <PriceDisplay
@@ -160,7 +165,8 @@ export function ProductCard({
         </div>
       </div>
 
-      <QuickAddModal
+      {/* The modal is unchanged and will now only be opened by the desktop button */}
+      <ProductModal
         productHandle={id}
         productData={product}
         isOpen={isModalOpen}

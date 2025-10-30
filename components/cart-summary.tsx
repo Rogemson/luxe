@@ -9,9 +9,10 @@ interface CartSummaryProps {
   discount?: number
   onCheckout: () => void
   isProcessing?: boolean
+  disabled?: boolean
 }
 
-export function CartSummary({ subtotal, shipping = 0, tax = 0, discount = 0, onCheckout, isProcessing = false, }: CartSummaryProps) {
+export function CartSummary({ subtotal, shipping = 0, tax = 0, discount = 0, onCheckout, isProcessing = false, disabled = false,}: CartSummaryProps) {
   const total = subtotal + shipping + tax - discount
 
   return (
@@ -53,7 +54,7 @@ export function CartSummary({ subtotal, shipping = 0, tax = 0, discount = 0, onC
 
       <Button
         onClick={onCheckout}
-        disabled={isProcessing}
+        disabled={disabled || isProcessing}
         className="w-full bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
       >
         {isProcessing ? "Processing..." : "Proceed to Checkout"}

@@ -48,12 +48,10 @@ export const GET_PRODUCT_BY_HANDLE_QUERY = `
       productType
       tags
       availableForSale
-
       featuredImage {
         url
         altText
       }
-
       collections(first: 1) {
         edges {
           node {
@@ -61,7 +59,6 @@ export const GET_PRODUCT_BY_HANDLE_QUERY = `
           }
         }
       }
-
       images(first: 10) {
         edges {
           node {
@@ -70,7 +67,6 @@ export const GET_PRODUCT_BY_HANDLE_QUERY = `
           }
         }
       }
-
       priceRange {
         minVariantPrice {
           amount
@@ -81,7 +77,6 @@ export const GET_PRODUCT_BY_HANDLE_QUERY = `
           currencyCode
         }
       }
-
       compareAtPriceRange {
         minVariantPrice {
           amount
@@ -92,19 +87,18 @@ export const GET_PRODUCT_BY_HANDLE_QUERY = `
           currencyCode
         }
       }
-
       options(first: 5) {
         id
         name
         values
-        }
-
+      }
       variants(first: 50) {
         edges {
           node {
             id
             title
             availableForSale
+            quantityAvailable
             sku
             selectedOptions {
               name
@@ -128,7 +122,6 @@ export const GET_PRODUCT_BY_HANDLE_QUERY = `
     }
   }
 `
-
 
 export const GET_RELATED_PRODUCTS_QUERY = `
   query getRelatedProducts($productId: ID!) {

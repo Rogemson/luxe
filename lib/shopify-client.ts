@@ -158,6 +158,7 @@ function transformProduct(node: ShopifyProductNode): ShopifyProduct {
             ? variantCompareAtPrice
             : undefined,
         image: variantNode.image?.url,
+        quantityAvailable: variantNode.quantityAvailable ?? null,
         selectedOptions: variantNode.selectedOptions.map((opt) => ({
           name: opt.name,
           value: opt.value,
@@ -369,6 +370,36 @@ export async function getProductByHandle(
   }
 }
 
+export async function getVariantInventory(variantId: string) {
+  const query = `
+    query getVariantInventory($id: ID!) {
+      node(id: $id) {
+        ... on ProductVariant {
+          id
+          availableForSale
+          quantityAvailable
+        }
+      }
+    }
+  `
+
+  try {
+    const response = await shopifyFetch<{
+      data: {
+        node: {
+          id: string
+          availableForSale: boolean
+          quantityAvailable: number | null
+        } | null
+      }
+    }>(query, { id: variantId })
+
+    return response.data.node
+  } catch (error) {
+    console.error('Failed to fetch variant inventory:', error)
+    return null
+  }
+}
 
 export async function getRelatedProducts(productId: string): Promise<ShopifyProduct[]> {
   try {

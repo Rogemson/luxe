@@ -120,6 +120,7 @@ export interface ShopifyProductNode {
           name: string
           value: string
         }>
+        quantityAvailable?: number | null
       }
     }>
   }
@@ -140,6 +141,7 @@ export interface ProductVariant {
   price: number
   compareAtPrice?: number
   image?: string
+  quantityAvailable: number | null
   selectedOptions: Array<{
     name: string
     value: string
@@ -194,6 +196,9 @@ export interface CartItem {
   image: string
   price: number
   variantTitle: string
+  availableForSale: boolean
+  quantityAvailable: number | null
+  productTitle: string
 }
 
 // Define the shape of the context
@@ -206,6 +211,8 @@ export interface CartContextType {
   totalPrice: number
   isEmpty: boolean
   checkout: () => Promise<void>
+  error: string | null // ✅ ADD
+  isOnline: boolean
 }
 
 export interface ShopifyCheckoutUserError {

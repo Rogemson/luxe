@@ -72,7 +72,7 @@ export function Header() {
           <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
             {/* Logo */}
             <Link href="/" className="font-serif text-2xl font-bold">
-              Zoster
+              LUXE
             </Link>
 
             {/* Desktop Navigation with Mega Menu */}

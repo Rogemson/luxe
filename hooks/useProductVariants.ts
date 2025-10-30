@@ -9,7 +9,6 @@ export function useProductVariants(product: ShopifyProduct | null) {
   useEffect(() => {
     if (!product) return
 
-    // Use a microtask to defer the state update (avoids synchronous warning)
     Promise.resolve().then(() => {
       const defaults: Record<string, string> = {}
       product.options.forEach((option) => {
@@ -25,6 +24,7 @@ export function useProductVariants(product: ShopifyProduct | null) {
           )
         )
       )
+
       setActiveVariant(match || null)
     })
   }, [product])
@@ -37,6 +37,7 @@ export function useProductVariants(product: ShopifyProduct | null) {
         ...selectedOptions,
         [optionName]: value,
       }
+
       setSelectedOptions(newSelectedOptions)
 
       const match = product.variants.find((variant) =>
@@ -46,8 +47,8 @@ export function useProductVariants(product: ShopifyProduct | null) {
           )
         )
       )
-      setActiveVariant(match || null)
 
+      setActiveVariant(match || null)
       return match || null
     },
     [selectedOptions, product]
@@ -61,6 +62,7 @@ export function useProductVariants(product: ShopifyProduct | null) {
         ...selectedOptions,
         [optionName]: optionValue,
       }
+
       const matchingVariant = product.variants.find((variant) =>
         Object.entries(hypotheticalSelection).every(([name, value]) =>
           variant.selectedOptions.some(
@@ -68,9 +70,30 @@ export function useProductVariants(product: ShopifyProduct | null) {
           )
         )
       )
+
       return matchingVariant?.availableForSale ?? false
     },
     [selectedOptions, product]
+  )
+
+  // ✅ New: Check if variant has low stock
+  const isLowStock = useCallback(
+    (variant: ProductVariant | null): boolean => {
+      if (!variant) return false
+      return variant.quantityAvailable !== null && 
+             variant.quantityAvailable <= 10 && 
+             variant.quantityAvailable > 0
+    },
+    []
+  )
+
+  // ✅ New: Get max quantity for current variant
+  const getMaxQuantity = useCallback(
+    (variant: ProductVariant | null): number | null => {
+      if (!variant) return null
+      return variant.quantityAvailable
+    },
+    []
   )
 
   return {
@@ -78,5 +101,7 @@ export function useProductVariants(product: ShopifyProduct | null) {
     activeVariant,
     handleOptionSelect,
     checkAvailability,
+    isLowStock, // ✅ Add this
+    getMaxQuantity, // ✅ Add this
   }
 }

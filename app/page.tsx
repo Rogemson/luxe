@@ -4,7 +4,7 @@ import { CollectionCard } from "@/components/collection-card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { getCollections } from "@/lib/shopify-client"
-
+import { DataErrorState } from "@/components/data-error-state"
 import { NewsletterSignup } from '@/components/newsletter-signup'
 
 export const revalidate = 3600
@@ -48,31 +48,33 @@ export default async function Home() {
       </section>
 
       {/* Collections Section */}
-      <section className="py-20 md:py-28">
+      <section className="py-20 md:py-28 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-12">
-            <h2 className="font-serif text-4xl md:text-5xl font-semibold text-foreground mb-4">Featured Collections</h2>
-            <p className="text-lg text-foreground/60 max-w-2xl">
+          <div className="text-center mb-16">
+            <h2 className="font-serif text-4xl md:text-5xl font-semibold mb-4">
+              Featured Collections
+            </h2>
+            <p className="text-foreground/60 max-w-2xl mx-auto">
               Discover our top collections, carefully curated to inspire and elevate your wardrobe.
             </p>
           </div>
 
           {featuredCollections.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-foreground/60 text-lg">No collections found.</p>
-              <p className="text-sm text-foreground/60 mt-2">
-                Make sure your Shopify store has collections and environment variables are configured.
-              </p>
-            </div>
+            <DataErrorState
+              title="Unable to Load Collections"
+              message="We're having trouble loading our collections right now. Please try refreshing the page."
+            />
           ) : (
-            <div className="grid md:grid-cols-3 gap-6">
-              {featuredCollections.map((collection) => (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredCollections.slice(0, 3).map((collection, index) => (
                 <CollectionCard
                   key={collection.id}
                   id={collection.handle}
                   title={collection.title}
                   image={collection.image}
                   productCount={collection.productCount}
+                  isAboveTheFold={true}
+                  gaIndex={index + 1}
                 />
               ))}
             </div>

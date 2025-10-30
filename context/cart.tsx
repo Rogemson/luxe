@@ -10,6 +10,7 @@ import {
   removeCartLines,
   updateBuyerIdentity,
 } from "@/lib/shopify-client"
+import { toast } from 'sonner'
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 const CART_STORAGE_KEY = "shopify_cart_id"
@@ -100,6 +101,8 @@ interface CartData {
             amount: string
             currencyCode: string
           }
+          availableForSale?: boolean
+          quantityAvailable?: number | null
           product: {
             title: string
             handle: string
@@ -132,22 +135,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const removeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const isDebounceActiveRef = useRef<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isOnline, setIsOnline] = useState(true)
 
   // Parse cart data from Shopify
-  const parseCartData = (cartData: CartData | undefined): CartItem[] => {
-    if (!cartData?.lines?.edges) return []
-
-    return cartData.lines.edges.map((edge) => ({
-      variantId: edge.node.merchandise.id,
-      merchandiseId: edge.node.merchandise.id,
-      lineId: edge.node.id,
-      quantity: edge.node.quantity,
-      title: edge.node.merchandise.product.title,
-      handle: edge.node.merchandise.product.handle,
-      image: edge.node.merchandise.product.featuredImage?.url || "",
-      price: parseFloat(edge.node.merchandise.priceV2.amount),
-      variantTitle: edge.node.merchandise.title,
-    }))
+  const parseCartData = (cartData: CartData): CartItem[] => {
+    return cartData.lines.edges.map((edge) => {
+      const { merchandise, quantity, id: lineId } = edge.node
+      
+      return {
+        variantId: merchandise.id,
+        merchandiseId: merchandise.id,
+        lineId,
+        quantity,
+        title: merchandise.product.title,
+        productTitle: merchandise.product.title, // ✅ Add this
+        variantTitle: merchandise.title || "Default",
+        handle: merchandise.product.handle,
+        image: merchandise.product.featuredImage?.url || "",
+        price: Number.parseFloat(merchandise.priceV2.amount),
+        availableForSale: merchandise.availableForSale ?? true, // ✅ Add this
+        quantityAvailable: merchandise.quantityAvailable ?? null, // ✅ Add this
+      }
+    })
   }
 
   const getCustomerToken = (): string | null => {
@@ -216,16 +226,39 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [isCartSynced, cartId]
   )
 
-  // ✅ STRATEGY 1: Force fresh load on mount
   useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true)
+      setError(null)
+    }
+    const handleOffline = () => {
+      setIsOnline(false)
+      setError('No internet connection. Please check your network.')
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    // Check initial state
+    if (!navigator.onLine) {
+      setIsOnline(false)
+      setError('No internet connection. Please check your network.')
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+  // ✅ STRATEGY 1: Force fresh load on mount
+   useEffect(() => {
     const loadCart = async () => {
       const storedCartId = localStorage.getItem(CART_STORAGE_KEY)
-
       if (storedCartId) {
         try {
+          setError(null) // Clear previous errors
           const res = (await fetchCart(storedCartId)) as ShopifyCartResponse
           const cartData = res?.data?.cart
-
           if (cartData) {
             const items = parseCartData(cartData)
             setCart(items)
@@ -236,6 +269,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error("❌ [LOAD] Failed to load cart:", error)
           localStorage.removeItem(CART_STORAGE_KEY)
+          
+          // ✅ SET USER-FRIENDLY ERROR
+          if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            setError('Unable to connect. Please check your internet connection.')
+          } else {
+            setError('Failed to load your cart. Please refresh the page.')
+          }
         }
       }
       setIsHydrated(true)
@@ -249,12 +289,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const initCart = async () => {
       if (!cartId && isHydrated) {
         try {
+          setError(null)
           const res = (await createCart([])) as ShopifyCartResponse
           const newCartId = res?.data?.cartCreate?.cart?.id
           if (newCartId) {
             setCartId(newCartId)
             localStorage.setItem(CART_STORAGE_KEY, newCartId)
-            
             const token = getCustomerToken()
             if (token && !isCartSynced) {
               setTimeout(() => syncCartWithCustomer(token), 100)
@@ -262,6 +302,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
           console.error("❌ [INIT] Failed to create cart:", error)
+          
+          // ✅ SET USER-FRIENDLY ERROR
+          if (error instanceof TypeError && error.message === 'Failed to fetch') {
+            setError('Unable to connect. Please check your internet connection.')
+          } else {
+            setError('Failed to initialize cart. Please refresh the page.')
+          }
         }
       }
     }
@@ -422,8 +469,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // ✅ Optimistic add to cart
   const addToCart = async (itemToAdd: CartItem): Promise<void> => {
-    if (!cartId) return
+    if (!cartId) {
+      toast.error('Cart not ready', {
+        description: 'Please wait a moment and try again.',
+      })
+      return
+    }
 
+    // Check if offline
+    if (!navigator.onLine) {
+      toast.error('No internet connection', {
+        description: 'Please check your connection and try again.',
+      })
+      return
+    }
+
+    // Optimistic update
+    const previousCart = [...cart]
     setCart((prev) => {
       const existing = prev.find((i) => i.variantId === itemToAdd.variantId)
       if (existing) {
@@ -436,28 +498,68 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [...prev, itemToAdd]
     })
 
-    try {
-      const res = (await addCartLines(cartId, [
-        { merchandiseId: itemToAdd.variantId, quantity: itemToAdd.quantity },
-      ])) as ShopifyCartResponse
-      const cartData = res?.data?.cartLinesAdd?.cart
+    // ✅ Show success toast immediately (optimistic)
+    toast.success('Added to cart', {
+      description: itemToAdd.title,
+      duration: 3000,
+    })
 
+    try {
+      const res = await addCartLines(cartId, [
+        { merchandiseId: itemToAdd.variantId, quantity: itemToAdd.quantity },
+      ]) as ShopifyCartResponse
+
+      const cartData = res?.data?.cartLinesAdd?.cart
       if (cartData) {
         const items = parseCartData(cartData)
         setCart(items)
       }
     } catch (error) {
       console.error("❌ [ADD] Failed to add to cart:", error)
-      setCart((prev) => prev.filter((i) => i.variantId !== itemToAdd.variantId))
+      
+      // Rollback optimistic update
+      setCart(previousCart)
+      
+      // ✅ Show error toast with retry option
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        toast.error('Connection problem', {
+          description: 'Could not add to cart. Please check your internet.',
+          action: {
+            label: 'Retry',
+            onClick: () => addToCart(itemToAdd),
+          },
+          duration: 5000,
+        })
+      } else {
+        toast.error('Could not add to cart', {
+          description: 'Please try again or refresh the page.',
+          action: {
+            label: 'Retry',
+            onClick: () => addToCart(itemToAdd),
+          },
+          duration: 5000,
+        })
+      }
     }
   }
 
   // ✅ Optimistic + debounced remove
-  const removeFromCart = async (variantId: string): Promise<void> => {
+   const removeFromCart = async (variantId: string): Promise<void> => {
     if (!cartId) return
 
-    const previousCart = cart
+    const previousCart = [...cart]
+    const itemToRemove = cart.find((i) => i.variantId === variantId)
+    
+    if (!itemToRemove) return
+
+    // Optimistic update
     setCart((prev) => prev.filter((i) => i.variantId !== variantId))
+
+    // ✅ Show success toast immediately (optimistic)
+    toast.success('Removed from cart', {
+      description: itemToRemove.title,
+      duration: 2000,
+    })
 
     if (removeTimeoutRef.current) {
       clearTimeout(removeTimeoutRef.current)
@@ -472,8 +574,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         await removeCartLines(cartId, [lineItem.lineId])
-
-        const cartRes = (await fetchCart(cartId)) as ShopifyCartResponse
+        
+        const cartRes = await fetchCart(cartId) as ShopifyCartResponse
         const cartData = cartRes?.data?.cart
         if (cartData) {
           const items = parseCartData(cartData)
@@ -481,19 +583,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error("❌ [REMOVE] Failed to remove from cart:", error)
+        
+        // Rollback
         setCart(previousCart)
+        
+        // ✅ Show error toast
+        toast.error('Could not remove item', {
+          description: 'Your cart has been restored. Please try again.',
+          action: {
+            label: 'Retry',
+            onClick: () => removeFromCart(variantId),
+          },
+          duration: 5000,
+        })
       }
     }, 600)
   }
 
-  // ✅ Optimistic + debounced quantity update
+  // ✅ UPDATED: Optimistic + debounced quantity update with toast
   const updateQuantity = async (
     variantId: string,
     quantity: number
   ): Promise<void> => {
     if (!cartId) return
-    isDebounceActiveRef.current = true
 
+    isDebounceActiveRef.current = true
+    
+    const previousCart = [...cart]
+    const item = cart.find(i => i.variantId === variantId)
+
+    // Optimistic update
     setCart((prev) => {
       if (quantity <= 0) {
         return prev.filter((i) => i.variantId !== variantId)
@@ -517,7 +636,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (finalQuantity === undefined) return
 
         let lineId: string | undefined
-
         setCart((currentCart) => {
           const lineItem = currentCart.find((i) => i.variantId === variantId)
           lineId = lineItem?.lineId
@@ -535,30 +653,87 @@ export function CartProvider({ children }: { children: ReactNode }) {
           await updateCartLines(cartId, [{ id: lineId, quantity: finalQuantity }])
         }
 
-        const cartRes = (await fetchCart(cartId)) as ShopifyCartResponse
+        const cartRes = await fetchCart(cartId) as ShopifyCartResponse
         const cartData = cartRes?.data?.cart
         if (cartData) {
           const items = parseCartData(cartData)
           setCart(items)
         }
+
+        // ✅ Show success toast after update completes
+        if (finalQuantity <= 0) {
+          toast.success('Removed from cart', {
+            description: item?.title,
+            duration: 2000,
+          })
+        }
       } catch (error) {
         console.error("❌ [QUANTITY] Failed to update:", error)
+        
+        // Rollback
+        setCart(previousCart)
+        
+        // ✅ Show error toast
+        toast.error('Could not update quantity', {
+          description: 'Your cart has been restored. Please try again.',
+          action: {
+            label: 'Retry',
+            onClick: () => updateQuantity(variantId, quantity),
+          },
+          duration: 5000,
+        })
       } finally {
         isDebounceActiveRef.current = false
       }
     }, 800)
   }
 
+  // ✅ UPDATED: Checkout with toast
   const checkout = async (): Promise<void> => {
-    if (!cartId) return
+    if (!cartId) {
+      toast.error('Cart not ready', {
+        description: 'Please wait a moment and try again.',
+      })
+      return
+    }
+
+    // Check if offline
+    if (!navigator.onLine) {
+      toast.error('No internet connection', {
+        description: 'Please check your connection and try again.',
+      })
+      return
+    }
+
     try {
-      const res = (await fetchCart(cartId)) as ShopifyCartResponse
+      const res = await fetchCart(cartId) as ShopifyCartResponse
       const checkoutUrl = res?.data?.cart?.checkoutUrl
-      if (checkoutUrl) {
-        window.location.href = checkoutUrl
+
+      if (!checkoutUrl) {
+        throw new Error('No checkout URL available')
       }
+
+      // ✅ Show loading toast
+      toast.loading('Redirecting to checkout...', {
+        duration: 2000,
+      })
+
+      window.location.href = checkoutUrl
     } catch (error) {
-      console.error("Failed to checkout:", error)
+      console.error("❌ [CHECKOUT] Failed to checkout:", error)
+      
+      // ✅ Show error toast
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        toast.error('Connection problem', {
+          description: 'Please check your internet connection.',
+          duration: 5000,
+        })
+      } else {
+        toast.error('Could not proceed to checkout', {
+          description: 'Please try again or contact support.',
+          duration: 5000,
+        })
+      }
     }
   }
 
@@ -577,6 +752,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     totalPrice,
     isEmpty,
     checkout,
+    error,
+    isOnline,
   }
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

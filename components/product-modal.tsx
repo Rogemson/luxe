@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { X, Minus, Plus, Loader2 } from 'lucide-react'
+import { X, Minus, Plus, AlertTriangle, PackageX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { PriceDisplay } from '@/components/sale-badge'
@@ -11,286 +11,373 @@ import { createShopifyCheckout, getProductByHandle } from '@/lib/shopify-client'
 import { useProductVariants } from '@/hooks/useProductVariants'
 import { trackAddToCart, trackBeginCheckout } from '@/lib/ga4'
 import type { ShopifyProduct } from '@/lib/shopify-types'
+import { toast } from 'sonner'
 
-interface QuickAddModalProps {
+// --- Quantity Selector Sub-component ---
+interface QuantitySelectorProps {
+  quantity: number
+  setQuantity: (quantity: number) => void
+  max: number | null
+  disabled?: boolean
+}
+
+function QuantitySelector({
+  quantity,
+  setQuantity,
+  max,
+  disabled,
+}: QuantitySelectorProps) {
+  const increment = () => {
+    if (max === null) {
+      setQuantity(quantity + 1)
+    } else {
+      setQuantity(Math.min(max, quantity + 1))
+    }
+  }
+
+  const decrement = () => setQuantity(Math.max(1, quantity - 1))
+
+  const isIncrementDisabled = disabled || (max !== null && quantity >= max)
+
+  return (
+    <div className="flex items-center gap-3">
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={decrement}
+        disabled={disabled || quantity <= 1}
+        className="h-10 w-10"
+      >
+        <Minus className="h-4 w-4" />
+      </Button>
+      <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={increment}
+        disabled={isIncrementDisabled}
+        className="h-10 w-10"
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
+
+// --- Main ProductModal Component ---
+interface ProductModalProps {
   productHandle: string
   productData?: ShopifyProduct
   isOpen: boolean
   onClose: () => void
 }
 
-export function QuickAddModal({
+export function ProductModal({
   productHandle,
   productData,
   isOpen,
   onClose,
-}: QuickAddModalProps) {
-  const { addToCart } = useCart()
-  const [product, setProduct] = useState(productData || null)
-  const [loading, setLoading] = useState(false)
+}: ProductModalProps) {
+  const [fetchedProduct, setFetchedProduct] = useState<ShopifyProduct | null>(null)
   const [quantity, setQuantity] = useState(1)
-  const [isProcessing, setIsProcessing] = useState(false)
   const [addedToCart, setAddedToCart] = useState(false)
-  const { selectedOptions, activeVariant, handleOptionSelect, checkAvailability } =
-    useProductVariants(product)
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  const { addToCart } = useCart()
+  const prevProductHandleRef = useRef<string>(productHandle)
+  const product = productData || fetchedProduct
+  const { activeVariant } = useProductVariants(product)
+
+  // ✅ Fixed: Add null checks
+  const maxQuantity = activeVariant?.quantityAvailable ?? null
+  const isOutOfStock = !activeVariant?.availableForSale
+  const showLowStock =
+    maxQuantity !== null &&
+    maxQuantity <= 10 &&
+    maxQuantity > 0
 
   useEffect(() => {
     if (!isOpen) return
+    if (productData) return
 
-    Promise.resolve().then(() => {
-      if (productData && productData.variants?.length > 0) {
-        setProduct(productData)
-        return
-      }
+    if (prevProductHandleRef.current !== productHandle) {
+      setQuantity(1)
+      setAddedToCart(false)
+      setIsProcessing(false)
+      setFetchedProduct(null)
+      prevProductHandleRef.current = productHandle
+    }
 
-      setLoading(true)
-      setProduct(null)
-
+    if (!fetchedProduct) {
       getProductByHandle(productHandle)
         .then((fetchedProduct) => {
           if (fetchedProduct) {
-            setProduct(fetchedProduct)
+            setFetchedProduct(fetchedProduct)
           }
-          setLoading(false)
         })
-        .catch(() => setLoading(false))
+        .catch((err) => console.error('Failed to fetch product:', err))
+    }
+  }, [isOpen, productHandle, fetchedProduct, productData])
 
-      setQuantity(1)
-      setAddedToCart(false)
-    })
-  }, [isOpen, productHandle, productData])
+  useEffect(() => {
+    if (maxQuantity !== null && quantity > maxQuantity) {
+      setQuantity(Math.max(1, maxQuantity))
+    }
+  }, [maxQuantity, quantity])
 
-  const handleAddToCart = () => {
-    if (!activeVariant || !product) return
+  if (!product) return null
 
-    const variantTitle = activeVariant.selectedOptions.map((opt) => opt.value).join(' / ')
+  const handleAddToCart = async () => {
+    if (!activeVariant) {
+      toast.error('Please select a variant')
+      return
+    }
 
-    // Track add to cart
-    trackAddToCart(
-      [
-        {
-          item_id: activeVariant.id,
-          item_name: product.title,
-          item_category: product.collection || 'Product',
-          item_variant: variantTitle,
-          price: activeVariant.price,
-          quantity: quantity,
-        },
-      ],
-      activeVariant.price * quantity
-    )
+    if (isOutOfStock) {
+      toast.error('This item is out of stock')
+      return
+    }
 
-    addToCart({
-      variantId: activeVariant.id,
-      merchandiseId: activeVariant.id,
-      quantity: quantity,
-      title: product.title,
-      handle: product.handle,
-      image: activeVariant.image || product.image,
-      price: activeVariant.price,
-      variantTitle: variantTitle,
-    })
+    if (maxQuantity !== null && quantity > maxQuantity) {
+      toast.error('Quantity exceeds available stock', {
+        description: `Only ${maxQuantity} available`,
+      })
+      return
+    }
 
-    setAddedToCart(true)
-    setTimeout(() => {
-      setAddedToCart(false)
-      onClose()
-    }, 1000)
+    setIsProcessing(true)
+
+    try {
+      // ✅ Fixed: Create variantTitle from selectedOptions
+      const variantTitle = activeVariant.selectedOptions
+        .map((opt) => opt.value)
+        .join(' / ')
+
+      await addToCart({
+        variantId: activeVariant.id,
+        merchandiseId: activeVariant.id,
+        quantity,
+        title: product.title,
+        handle: product.handle,
+        image: activeVariant.image || product.image,
+        price: activeVariant.price,
+        variantTitle: variantTitle,
+        availableForSale: activeVariant.availableForSale,
+        quantityAvailable: activeVariant.quantityAvailable,
+        productTitle: product.title,
+      })
+
+      setAddedToCart(true)
+      setTimeout(() => {
+        onClose()
+        setAddedToCart(false)
+      }, 1500)
+
+      // ✅ Fixed: trackAddToCart expects array and total value
+      trackAddToCart(
+        [
+          {
+            item_id: activeVariant.id,
+            item_name: product.title,
+            item_category: product.collection || 'Product',
+            item_variant: variantTitle,
+            price: activeVariant.price,
+            quantity,
+          },
+        ],
+        activeVariant.price * quantity
+      )
+    } catch (error) {
+      console.error('Add to cart error:', error)
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleBuyNow = async () => {
-    if (!activeVariant) return
+    if (!activeVariant) {
+      toast.error('Please select a variant')
+      return
+    }
+
+    if (isOutOfStock) {
+      toast.error('This item is out of stock')
+      return
+    }
+
+    if (maxQuantity !== null && quantity > maxQuantity) {
+      toast.error('Quantity exceeds available stock', {
+        description: `Only ${maxQuantity} available`,
+      })
+      return
+    }
 
     setIsProcessing(true)
-    try {
-      const variantTitle = activeVariant.selectedOptions.map((opt) => opt.value).join(' / ')
 
-      // Track begin checkout
+    try {
+      const lines = [
+        {
+          merchandiseId: activeVariant.id,
+          quantity,
+        },
+      ]
+
+      // ✅ Fixed: Create variantTitle from selectedOptions
+      const variantTitle = activeVariant.selectedOptions
+        .map((opt) => opt.value)
+        .join(' / ')
+
       trackBeginCheckout(
         [
           {
             item_id: activeVariant.id,
-            item_name: product?.title || '',
-            item_category: product?.collection || 'Product',
+            item_name: product.title,
+            item_category: product.collection || 'Product',
             item_variant: variantTitle,
             price: activeVariant.price,
-            quantity: quantity,
+            quantity,
           },
         ],
         activeVariant.price * quantity
       )
 
-      const lines = [
-        {
-          merchandiseId: activeVariant.id,
-          quantity: quantity,
-        },
-      ]
+      toast.loading('Preparing checkout...', {
+        id: 'buy-now-loading',
+      })
 
       const checkoutUrl = await createShopifyCheckout(lines)
+
+      toast.dismiss('buy-now-loading')
       window.location.href = checkoutUrl
-    } catch {
+    } catch (error) {
+      console.error('Buy now error:', error)
+
+      toast.dismiss('buy-now-loading')
+
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        toast.error('Connection problem', {
+          description: 'Could not reach checkout. Please check your internet.',
+        })
+      } else {
+        toast.error('Checkout failed', {
+          description: 'Please try adding to cart instead.',
+        })
+      }
+
       setIsProcessing(false)
     }
   }
 
-  if (!isOpen) return null
-
-  const displayPrice = activeVariant?.price ?? product?.price ?? 0
-  const displayOriginalPrice = activeVariant?.compareAtPrice ?? product?.compareAtPrice
-  const isAvailable = activeVariant?.availableForSale ?? false
-
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      {loading ? (
-        <div className="bg-background rounded-lg p-6 text-center">
-          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-          Loading product details...
-        </div>
-      ) : product ? (
-        <>
-          {/* Full Background Image */}
-          <div className="absolute inset-0 overflow-hidden">
-            {product.image ? (
-              <Image
-                src={product.image}
-                alt={product.title}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-secondary flex items-center justify-center">
-                No image
-              </div>
-            )}
-          </div>
-
-          {/* Dark overlay gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-
-          {/* Close Button */}
+      <div className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="sticky top-0 flex items-center justify-between p-6 border-b bg-white z-10">
+          <h2 className="text-2xl font-bold">{product.title}</h2>
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 p-2 bg-background/80 backdrop-blur-sm rounded-full hover:bg-background transition-colors"
+            className="p-1 hover:bg-gray-100 rounded transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
+        </div>
 
-          {/* Content Overlay */}
-          <div className="relative z-10 w-full max-w-md mx-4 bg-background/95 backdrop-blur-sm rounded-lg overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Title and Price Section - Fixed at top */}
-            <div className="p-6 border-b">
-              {product.collection && (
-                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-                  {product.collection}
-                </p>
-              )}
-              <h2 className="font-serif text-2xl font-semibold mb-3">{product.title}</h2>
+        <ScrollArea className="h-[calc(90vh-80px)]">
+          <div className="p-6 space-y-6">
+            {product.image && (
+              <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-gray-100">
+                <Image
+                  src={product.image}
+                  alt={product.title}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            )}
+
+            {/* ✅ Fixed: Use correct prop names */}
+            <div>
               <PriceDisplay
-                currentPrice={displayPrice}
-                compareAtPrice={displayOriginalPrice}
+                currentPrice={activeVariant?.price || product.price}
+                compareAtPrice={activeVariant?.compareAtPrice || product.compareAtPrice}
               />
             </div>
 
-            {/* Scrollable Controls Section */}
-            <ScrollArea className="flex-1 p-6">
-              <div className="space-y-6">
-                {/* Variant Selection */}
-                {product.options &&
-                  product.options.length > 0 &&
-                  product.options.map((option) => (
-                    <div key={option.name}>
-                      <label className="text-sm font-semibold mb-3 block">{option.name}</label>
-                      <div className="flex flex-wrap gap-2">
-                        {option.values.map((value) => {
-                          const isSelected = selectedOptions[option.name] === value
-                          const isOptionAvailable = checkAvailability(option.name, value)
-
-                          return (
-                            <button
-                              key={value}
-                              onClick={() => handleOptionSelect(option.name, value)}
-                              disabled={!isOptionAvailable}
-                              className={`px-4 py-2.5 border-2 rounded-lg text-sm font-medium transition-all ${
-                                isSelected
-                                  ? 'bg-foreground text-background border-foreground shadow-md scale-105'
-                                  : isOptionAvailable
-                                  ? 'border-border bg-background hover:border-foreground hover:shadow-sm'
-                                  : 'border-border bg-muted text-muted-foreground line-through cursor-not-allowed opacity-50'
-                              }`}
-                            >
-                              {value}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
-
-                {/* Quantity Selector */}
+            {isOutOfStock ? (
+              <div className="flex items-center gap-2 text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3">
+                <PackageX className="w-5 h-5 shrink-0" />
                 <div>
-                  <label className="text-sm font-semibold mb-3 block">Quantity</label>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="h-9 w-9 rounded-lg border-2"
-                      variant="outline"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </Button>
-                    <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
-                    <Button
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="h-9 w-9 rounded-lg border-2"
-                      variant="outline"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <p className="font-semibold text-sm">Out of Stock</p>
+                  <p className="text-xs">This variant is currently unavailable</p>
                 </div>
               </div>
-            </ScrollArea>
+            ) : showLowStock && maxQuantity !== null ? (
+              <div className="flex items-center gap-2 text-warning bg-warning/10 border border-warning/30 rounded-lg px-4 py-3">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <div>
+                  <p className="font-semibold text-sm">Low Stock</p>
+                  <p className="text-xs">Only {maxQuantity} left in stock</p>
+                </div>
+              </div>
+            ) : null}
 
-            {/* Action Buttons */}
-            <div className="p-6 border-t space-y-3">
+            {product.description && (
+              <p className="text-gray-600">{product.description}</p>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Quantity</label>
+              <QuantitySelector
+                quantity={quantity}
+                setQuantity={setQuantity}
+                max={maxQuantity}
+                disabled={isOutOfStock}
+              />
+              {maxQuantity !== null && !isOutOfStock && (
+                <p className="text-xs text-gray-500">
+                  Maximum available: {maxQuantity}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
               <Button
                 onClick={handleAddToCart}
-                disabled={!isAvailable}
+                disabled={!activeVariant || isProcessing || isOutOfStock}
                 className="w-full"
                 size="lg"
               >
-                {addedToCart ? '✓ Added!' : 'Add to Cart'}
+                {isProcessing
+                  ? 'Adding...'
+                  : addedToCart
+                  ? 'Added to Cart!'
+                  : isOutOfStock
+                  ? 'Out of Stock'
+                  : 'Add to Cart'}
               </Button>
               <Button
                 onClick={handleBuyNow}
-                disabled={!isAvailable || isProcessing}
+                disabled={!activeVariant || isProcessing || isOutOfStock}
                 variant="outline"
                 className="w-full"
                 size="lg"
               >
                 {isProcessing ? 'Processing...' : 'Buy Now'}
               </Button>
-
-              {/* Availability Status */}
-              {!isAvailable && (
-                <p className="text-sm text-red-500 text-center">
-                  This variant is currently unavailable
-                </p>
-              )}
             </div>
+
+            {!activeVariant && (
+              <div className="bg-gray-100 border rounded-lg p-4 text-sm text-gray-600 text-center">
+                Please select your options.
+              </div>
+            )}
           </div>
-        </>
-      ) : (
-        <div className="bg-background rounded-lg p-6 text-center">
-          Failed to load product details
-          <p className="text-sm text-muted-foreground mt-2">Handle: {productHandle}</p>
-        </div>
-      )}
+        </ScrollArea>
+      </div>
     </div>
   )
 }

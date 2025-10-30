@@ -9,6 +9,8 @@ import { SearchProvider } from '@/context/search'
 import { ProductsLoader } from '@/components/products-loader'
 import { FiltersProvider } from '@/context/filters'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import { OfflineGuard } from '@/components/offline-guard'
+import { Toaster } from 'sonner'
 import Script from 'next/script'
 
 const playfair = Playfair_Display({
@@ -52,7 +54,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CartProvider>
           <WishlistProvider>
             <SearchProvider>
-              <FiltersProvider>  {/* Add this wrapper */}
+              <FiltersProvider>
+                <Toaster position="top-center" richColors closeButton />
+                <OfflineGuard />
                 <ProductsLoader />
                 {children}
                 <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID!} />

@@ -100,7 +100,7 @@ export function MegaMenu() {
                               <Grid className="w-12 h-12 text-muted-foreground" />
                             </div>
                           )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="absolute inset-0 bg-liner-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                         <h4 className="text-sm font-medium group-hover:text-primary transition-colors">
                           {collection.title}

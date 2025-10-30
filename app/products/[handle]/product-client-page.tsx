@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/header'
@@ -13,169 +13,304 @@ import {
   ChevronRight,
   Minus,
   Plus,
+  PackageX,
+  AlertTriangle,
+  Loader2
 } from 'lucide-react'
 import type { ShopifyProduct } from '@/lib/shopify-types'
 import { useCart } from '@/context/cart'
 import { useProductVariants } from '@/hooks/useProductVariants'
 import { trackAddToCart, trackBeginCheckout } from '@/lib/ga4'
-import { createShopifyCheckout } from '@/lib/shopify-client'
+import { createShopifyCheckout, getVariantInventory  } from '@/lib/shopify-client'
+import { toast } from 'sonner'
 
 interface QuantitySelectorProps {
   quantity: number
   setQuantity: (quantity: number) => void
+  max: number | null
+  disabled?: boolean
 }
 
-function QuantitySelector({ quantity, setQuantity }: QuantitySelectorProps) {
-  const increment = () => setQuantity(quantity + 1)
+function QuantitySelector({
+  quantity,
+  setQuantity,
+  max,
+  disabled,
+}: QuantitySelectorProps) {
+  const increment = () => {
+    if (max === null) {
+      setQuantity(quantity + 1)
+    } else {
+      setQuantity(Math.min(max, quantity + 1))
+    }
+  }
+
   const decrement = () => setQuantity(Math.max(1, quantity - 1))
 
+  const isIncrementDisabled = disabled || (max !== null && quantity >= max)
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <Button
         variant="outline"
         size="icon"
         onClick={decrement}
-        className="border-border"
+        disabled={disabled || quantity <= 1}
+        className="h-10 w-10"
       >
-        <Minus className="w-4 h-4" />
+        <Minus className="h-4 w-4" />
       </Button>
-      <span className="w-12 text-center font-medium">{quantity}</span>
+      <span className="text-lg font-semibold w-12 text-center">{quantity}</span>
       <Button
         variant="outline"
         size="icon"
         onClick={increment}
-        className="border-border"
+        disabled={isIncrementDisabled}
+        className="h-10 w-10"
       >
-        <Plus className="w-4 h-4" />
+        <Plus className="h-4 w-4" />
       </Button>
     </div>
   )
 }
 
-interface ProductClientPageProps {
+export default function ProductClientPage({
+  product,
+}: {
   product: ShopifyProduct
-}
-
-export default function ProductClientPage({ product }: ProductClientPageProps) {
+}) {
   const router = useRouter()
-  const [isFavorite, setIsFavorite] = useState(false)
+  const { addToCart } = useCart()
+  const {
+    selectedOptions,
+    activeVariant,
+    handleOptionSelect,
+    checkAvailability,
+  } = useProductVariants(product)
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const [addedToCart, setAddedToCart] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const { addToCart } = useCart()
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [isBuyingNow, setIsBuyingNow] = useState(false)
+  const [isFavorite, setIsFavorite] = useState(false)
+  const [liveStockData, setLiveStockData] = useState<Record<string, { availableForSale: boolean, quantityAvailable: number | null }>>({})
+  const [isLoadingStock, setIsLoadingStock] = useState(false)
 
-  const { selectedOptions, activeVariant, handleOptionSelect, checkAvailability } =
-    useProductVariants(product)
+  // --- Derived State and Logic ---
+  useEffect(() => {
+    if (!activeVariant) return
 
-  const images =
-    product.images && product.images.length > 0
-      ? product.images
-      : [product.image].filter((img): img is string => !!img)
-
-  const nextImage = () => setCurrentImageIndex((i) => (i + 1) % images.length)
-  const prevImage = () =>
-    setCurrentImageIndex((i) => (i - 1 + images.length) % images.length)
-
-  const handleOptionChange = (optionName: string, value: string) => {
-    const newVariant = handleOptionSelect(optionName, value)
-    setQuantity(1)
-
-    if (newVariant?.image) {
-      const variantImageIndex = images.findIndex(
-        (img) => img === newVariant.image
-      )
-      if (variantImageIndex !== -1) {
-        setCurrentImageIndex(variantImageIndex)
+    setIsLoadingStock(true)
+    
+    const fetchLiveStock = async () => {
+      try {
+        const inventory = await getVariantInventory(activeVariant.id)
+        if (inventory) {
+          setLiveStockData(prev => ({
+            ...prev,
+            [activeVariant.id]: {
+              availableForSale: inventory.availableForSale,
+              quantityAvailable: inventory.quantityAvailable,
+            }
+          }))
+        }
+      } catch (error) {
+        console.error('Failed to fetch live stock:', error)
+        // Fallback to cached data
+      } finally {
+        setIsLoadingStock(false)
       }
     }
-  }
 
+    fetchLiveStock()
+  }, [activeVariant?.id])
+
+  // --- Handlers --
+
+  const currentVariantStock = activeVariant && liveStockData[activeVariant.id]
+    ? liveStockData[activeVariant.id]
+    : activeVariant
+      ? { 
+          availableForSale: activeVariant.availableForSale, 
+          quantityAvailable: activeVariant.quantityAvailable 
+        }
+      : null
+  // Get images for the gallery
+  const images = useMemo(() => {
+    const mainImage = activeVariant?.image || product.image
+    const otherImages = product.images.filter((img) => img !== mainImage)
+    return [mainImage, ...otherImages].filter(Boolean) as string[]
+  }, [product.image, product.images, activeVariant?.image])
+
+  // Get stock info for active variant
+  const maxQuantity = currentVariantStock?.quantityAvailable ?? null
+  const isOutOfStock = currentVariantStock ? !currentVariantStock.availableForSale : false
+  const showLowStock =
+    (currentVariantStock?.quantityAvailable ?? 0) <= 10 &&
+    (currentVariantStock?.quantityAvailable ?? 0) > 0
+
+  // Get price display
   const displayPrice = activeVariant?.price ?? product.price
   const displayOriginalPrice =
     activeVariant?.compareAtPrice ?? product.compareAtPrice
-  const isAvailable = activeVariant?.availableForSale ?? false
 
-  const handleAddToCart = () => {
-    if (!activeVariant) {
-      console.error('No variant selected')
-      return
-    }
-
-    const variantTitle = activeVariant.selectedOptions
-      .map((opt) => opt.value)
-      .join(' / ')
-
-    // Track add to cart
-    trackAddToCart(
-      [
-        {
-          item_id: activeVariant.id,
-          item_name: product.title,
-          item_category: product.collection || 'Product',
-          item_variant: variantTitle,
-          price: activeVariant.price,
-          quantity: quantity,
-        },
-      ],
-      activeVariant.price * quantity
-    )
-
-    addToCart({
-      variantId: activeVariant.id,
-      merchandiseId: activeVariant.id,
-      quantity: quantity,
-      title: product.title,
-      handle: product.handle,
-      image: activeVariant.image || product.image,
-      price: activeVariant.price,
-      variantTitle: variantTitle,
-    })
-
-    setAddedToCart(true)
-    setTimeout(() => setAddedToCart(false), 1000)
+  // Image gallery functions
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length)
+  }
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)
   }
 
-  const handleBuyNow = async () => {
+  // Update main image when variant changes
+  useEffect(() => {
+    if (activeVariant?.image) {
+      const newIndex = images.findIndex((img) => img === activeVariant.image)
+      if (newIndex !== -1) {
+        setCurrentImageIndex(newIndex)
+      }
+    }
+    // Don't reset to 0, just update if variant has a specific image
+  }, [activeVariant?.image, images])
+
+  // Reset quantity when variant changes and new max is lower
+  useEffect(() => {
+    if (maxQuantity !== null && quantity > maxQuantity) {
+      setQuantity(Math.max(1, maxQuantity))
+    }
+  }, [maxQuantity])
+
+  const handleAddToCart = async () => {
     if (!activeVariant) {
-      console.error('No variant selected')
+      toast.error('Please select all options')
       return
     }
 
-    setIsProcessing(true)
+    if (isOutOfStock) {
+      toast.error('This item is out of stock')
+      return
+    }
+
+    if (maxQuantity !== null && quantity > maxQuantity) {
+      toast.error('Quantity exceeds available stock', {
+        description: `Only ${maxQuantity} available`,
+      })
+      return
+    }
+
+    setIsAddingToCart(true)
 
     try {
+      // Build variant title
       const variantTitle = activeVariant.selectedOptions
         .map((opt) => opt.value)
         .join(' / ')
 
-      // Track begin checkout
+      await addToCart({
+        variantId: activeVariant.id,
+        merchandiseId: activeVariant.id,
+        quantity,
+        title: product.title,
+        handle: product.handle,
+        image: activeVariant.image || product.image,
+        price: activeVariant.price,
+        variantTitle: variantTitle, // Use constructed title
+        availableForSale: activeVariant.availableForSale,
+        quantityAvailable: activeVariant.quantityAvailable,
+        productTitle: product.title,
+      })
+
+      // Corrected trackAddToCart call
+      trackAddToCart(
+        [
+          {
+            item_id: activeVariant.id,
+            item_name: product.title,
+            item_variant: variantTitle, // Use constructed title
+            price: activeVariant.price,
+            quantity,
+          },
+        ],
+        activeVariant.price * quantity
+      )
+    } catch (error) {
+      console.error('Add to cart error:', error)
+      // Error toast is shown by cart context
+    } finally {
+      setIsAddingToCart(false)
+    }
+  }
+
+  const handleBuyNow = async () => {
+    if (!activeVariant) {
+      toast.error('Please select all options')
+      return
+    }
+
+    if (isOutOfStock) {
+      toast.error('This item is out of stock')
+      return
+    }
+
+    if (maxQuantity !== null && quantity > maxQuantity) {
+      toast.error('Quantity exceeds available stock', {
+        description: `Only ${maxQuantity} available`,
+      })
+      return
+    }
+
+    setIsBuyingNow(true)
+
+    try {
+      const lines = [
+        {
+          merchandiseId: activeVariant.id,
+          quantity,
+        },
+      ]
+
+      // Build variant title
+      const variantTitle = activeVariant.selectedOptions
+        .map((opt) => opt.value)
+        .join(' / ')
+
       trackBeginCheckout(
         [
           {
             item_id: activeVariant.id,
             item_name: product.title,
-            item_category: product.collection || 'Product',
-            item_variant: variantTitle,
+            item_variant: variantTitle, // Use constructed title
             price: activeVariant.price,
-            quantity: quantity,
+            quantity,
           },
         ],
         activeVariant.price * quantity
       )
 
-      const lines = [
-        {
-          merchandiseId: activeVariant.id,
-          quantity: quantity,
-        },
-      ]
+      toast.loading('Preparing checkout...', {
+        id: 'buy-now-loading',
+      })
 
       const checkoutUrl = await createShopifyCheckout(lines)
-      window.location.href = checkoutUrl
+
+      toast.dismiss('buy-now-loading')
+      router.push(checkoutUrl)
     } catch (error) {
-      console.error('Checkout error:', error)
-      setIsProcessing(false)
+      console.error('Buy now error:', error)
+
+      toast.dismiss('buy-now-loading')
+
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        toast.error('Connection problem', {
+          description: 'Could not reach checkout. Please check your internet.',
+        })
+      } else {
+        toast.error('Checkout failed', {
+          description: 'Please try adding to cart instead.',
+        })
+      }
+
+      setIsBuyingNow(false)
     }
   }
 
@@ -188,11 +323,11 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
           <div className="space-y-4">
             <Button
               variant="ghost"
-              onClick={() => router.push('/products')}
-              className="mb-8 text-muted-foreground hover:text-foreground cursor-pointer"
+              onClick={() => router.back()} // Use router.back() for better UX
+              className="mb-8 text-muted-foreground hover:text-foreground cursor-pointer -ml-4" // Adjust padding
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
-              Back to Products
+              Back
             </Button>
             <div className="relative aspect-square overflow-hidden rounded-lg bg-secondary">
               {images[currentImageIndex] ? (
@@ -238,7 +373,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                     onClick={() => setCurrentImageIndex(i)}
                     className={`relative w-20 h-20 rounded-md overflow-hidden border-2 ${
                       currentImageIndex === i
-                        ? 'border-accent'
+                        ? 'border-primary' // Use primary color
                         : 'border-border'
                     }`}
                   >
@@ -280,6 +415,29 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
               </div>
             </div>
 
+            {isLoadingStock ? (
+                <div className="flex items-center gap-2 bg-muted border rounded-lg px-4 py-3">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Checking availability...</span>
+                </div>
+              ) : isOutOfStock ? (
+                <div className="flex items-center gap-2 text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3">
+                  <PackageX className="w-5 h-5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-sm">Out of Stock</p>
+                    <p className="text-xs">This variant is currently unavailable</p>
+                  </div>
+                </div>
+              ) : showLowStock && maxQuantity !== null && (
+                <div className="flex items-center gap-2 text-warning bg-warning/10 border border-warning/30 rounded-lg px-4 py-3">
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-sm">Low Stock</p>
+                    <p className="text-xs">Only {maxQuantity} left in stock</p>
+                  </div>
+                </div>
+              )}
+
             <p className="text-foreground/70 leading-relaxed">
               {product.description}
             </p>
@@ -300,7 +458,7 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                       return (
                         <button
                           key={value}
-                          onClick={() => handleOptionChange(option.name, value)}
+                          onClick={() => handleOptionSelect(option.name, value)} // Fixed function name
                           disabled={!isOptionAvailable}
                           className={`px-4 py-2 border rounded-md text-sm font-medium transition ${
                             isSelected
@@ -319,46 +477,73 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
               ))}
             </div>
 
-            <div className="pt-4">
-              <p className="font-medium mb-2">Quantity</p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Quantity</label>
               <QuantitySelector
                 quantity={quantity}
                 setQuantity={setQuantity}
+                max={maxQuantity}
+                disabled={isOutOfStock || !activeVariant}
               />
+              {maxQuantity !== null && !isOutOfStock && (
+                <p className="text-xs text-muted-foreground">
+                  Maximum available: {maxQuantity}
+                </p>
+              )}
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
+            <div className="space-y-3">
               <Button
-                className={`flex-1 transition-all cursor-pointer ${
-                  !isAvailable
-                    ? 'bg-secondary text-muted-foreground cursor-not-allowed'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                }`}
-                disabled={!isAvailable}
                 onClick={handleAddToCart}
+                disabled={
+                  !activeVariant ||
+                  isAddingToCart ||
+                  isBuyingNow ||
+                  isOutOfStock
+                }
+                className="w-full"
+                size="lg"
               >
-                {addedToCart
-                  ? 'Added to cart!'
-                  : isAvailable
-                  ? 'Add to Cart'
-                  : activeVariant
-                  ? 'Unavailable'
-                  : 'Out of Stock'}
+                {isAddingToCart
+                  ? 'Adding...'
+                  : isOutOfStock
+                  ? 'Out of Stock'
+                  : 'Add to Cart'}
               </Button>
-
               <Button
-                className={`flex-1 transition-all cursor-pointer ${
-                  !isAvailable || isProcessing
-                    ? 'bg-secondary text-muted-foreground cursor-not-allowed'
-                    : 'bg-foreground text-background hover:bg-foreground/90'
-                }`}
-                disabled={!isAvailable || isProcessing}
                 onClick={handleBuyNow}
+                disabled={
+                  !activeVariant ||
+                  isBuyingNow ||
+                  isAddingToCart ||
+                  isOutOfStock
+                }
+                variant="outline"
+                className="w-full"
+                size="lg"
               >
-                {isProcessing ? 'Processing...' : 'Buy Now'}
+                {isBuyingNow ? 'Processing...' : 'Buy Now'}
               </Button>
+            </div>
 
+            {/* Unavailable variant message */}
+            {!activeVariant &&
+              product.options.some((opt) => !selectedOptions[opt.name]) && (
+                <div className="bg-muted border rounded-lg p-4 text-sm text-muted-foreground text-center">
+                  Please select all options to see availability.
+                </div>
+              )}
+
+            {!activeVariant &&
+              product.options.every((opt) => selectedOptions[opt.name]) && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-sm text-destructive text-center">
+                  This combination is not available.
+                </div>
+              )}
+
+            {/* Share/Favorite */}
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="icon"
@@ -366,9 +551,9 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                 className="border-border hover:bg-secondary"
               >
                 <Heart
-                  className={`w-5 h-5 ${
+                  className={`w-5 h-5 transition-colors ${
                     isFavorite
-                      ? 'fill-accent text-accent'
+                      ? 'fill-red-500 text-red-500' // Use red for favorite
                       : 'text-foreground'
                   }`}
                 />
@@ -381,12 +566,6 @@ export default function ProductClientPage({ product }: ProductClientPageProps) {
                 <Share2 className="w-5 h-5 text-foreground" />
               </Button>
             </div>
-
-            {!activeVariant && product.variants.length > 0 && (
-              <p className="text-sm text-destructive text-center">
-                This combination is not available.
-              </p>
-            )}
           </div>
         </div>
       </section>

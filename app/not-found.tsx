@@ -1,70 +1,74 @@
-import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
-import { getCollections } from "@/lib/shopify-client"
-import { CollectionCard } from "@/components/collection-card"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Home } from "lucide-react"
 
-// This page automatically becomes a Server Component,
-// so we can fetch data directly.
-export default async function NotFoundPage() {
-  // Fetch collections and take the first 3
-  const allCollections = await getCollections()
-  const topCollections = allCollections.slice(0, 3)
-
+// ✅ No async fetching - pure static component
+export default function NotFoundPage() {
   return (
-    <main className="min-h-screen bg-background">
-      <Header />
-
-      {/* 404 Message Section */}
-      <section className="py-20 md:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
-          <span className="text-6xl md:text-8xl font-bold text-accent">
-            404
-          </span>
-          <h1 className="font-serif text-3xl md:text-4xl font-semibold text-foreground mt-4 mb-4">
-            Page Not Found
-          </h1>
-          <p className="text-lg text-foreground/60 max-w-lg mb-8">
-            Sorry, we couldn’t find the page you’re looking for. It might have
-            been moved or deleted.
-          </p>
-          <Button asChild size="lg">
-            <Link href="/">
-              Go to Homepage
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
-          </Button>
+    <div className="min-h-screen flex flex-col">
+      {/* Simple header without data dependencies */}
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-4">
+          <Link href="/" className="font-serif text-xl font-bold">
+            LUXE
+          </Link>
         </div>
-      </section>
+      </header>
 
-      {/* Top Collections Section */}
-      {topCollections.length > 0 && (
-        <section className="py-16 md:py-20 bg-secondary">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-serif text-3xl font-semibold text-foreground mb-12 text-center">
-              Or check out our top collections
-            </h2>
-            {/* Responsive grid for collections */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {topCollections.map((collection) => (
-                <CollectionCard
-                  key={collection.id}
-                  id={collection.handle}
-                  title={collection.title}
-                  image={collection.image}
-                  productCount={collection.productCount}
-                  // We can prioritize these images as they are key content
-                  isAboveTheFold={true}
-                />
-              ))}
+      <main className="flex-1 flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          {/* 404 Message */}
+          <div className="space-y-4">
+            <h1 className="text-8xl font-bold text-muted-foreground">404</h1>
+            <h2 className="text-3xl font-semibold">Page Not Found</h2>
+            <p className="text-muted-foreground">
+              Sorry, we couldn&apos;t find the page you&apos;re looking for. It might
+              have been moved or deleted.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/">
+              <Button className="w-full sm:w-auto gap-2">
+                <Home className="w-4 h-4" />
+                Go to Homepage
+              </Button>
+            </Link>
+            <Link href="/collections">
+              <Button variant="outline" className="w-full sm:w-auto gap-2">
+                Browse Collections
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+
+          {/* Helpful links */}
+          <div className="pt-8 text-sm text-muted-foreground">
+            <p className="mb-2">You might be looking for:</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Link href="/shop" className="hover:text-foreground underline">
+                Shop
+              </Link>
+              <span>•</span>
+              <Link href="/account" className="hover:text-foreground underline">
+                Account
+              </Link>
+              <span>•</span>
+              <Link href="/contact" className="hover:text-foreground underline">
+                Contact
+              </Link>
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </main>
 
-      <Footer />
-    </main>
+      {/* Simple footer */}
+      <footer className="border-t py-8">
+        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+          © {new Date().getFullYear()} LUXE. All rights reserved.
+        </div>
+      </footer>
+    </div>
   )
 }

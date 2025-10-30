@@ -1,8 +1,11 @@
+// app/collections/page.tsx
+
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { CollectionCard } from "@/components/collection-card"
 import { CollectionsClient } from "@/components/collections-client"
 import { getCollections } from "@/lib/shopify-client"
+import { DataErrorState } from "@/components/data-error-state"
 
 export default async function CollectionsPage() {
   const collections = await getCollections()
@@ -29,12 +32,10 @@ export default async function CollectionsPage() {
         <section className="py-20 md:py-28">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {collections.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-foreground/60 text-lg">No collections found.</p>
-                <p className="text-foreground/60 text-sm mt-2">
-                  Make sure your Shopify store has collections and your environment variables are set.
-                </p>
-              </div>
+              <DataErrorState
+                title="Unable to Load Collections"
+                message="We're having trouble loading our collections. Please check your connection and try again."
+              />
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {collections.map((collection, index) => (
