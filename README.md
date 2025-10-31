@@ -188,7 +188,6 @@ NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN=your-access-token
 NEXT_PUBLIC_GA_ID=G_XXXXXXXXXX
 
 # Email Services (Optional)
-SENDGRID_API_KEY=your-sendgrid-key
 RESEND_API_KEY=your-resend-key
 ```
 
@@ -271,40 +270,6 @@ npm run test:coverage
 # UI Dashboard
 npm run test:ui
 ```
-
-### **Test Results**
-
-```
-✅ Shopify Client Tests (4 tests)
-  ✓ should make successful GraphQL request
-  ✓ should handle API errors gracefully
-  ✓ should include correct headers
-  ✓ should pass variables correctly
-
-✅ Cart Context Tests (4 tests)
-  ✓ should initialize with empty cart
-  ✓ should add item to cart
-  ✓ should calculate total items correctly
-  ✓ should calculate total price correctly
-
-✅ Product Variants Tests (5 tests)
-  ✓ should initialize with first available variant
-  ✓ should update selected variant when option changes
-  ✓ should handle rapid option changes
-  ✓ should check availability
-  ✓ should handle null product gracefully
-
-✅ UI Component Tests (6+ tests)
-  ✓ CartItem renders correctly
-  ✓ CartSummary handles checkout
-  ✓ ProductCard displays info
-  ... and more
-
-Tests: 20+ passing
-Coverage: 75%
-```
-
----
 
 ## 📈 Key Implementations
 
@@ -496,7 +461,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 **Available for:** Shopify development, Next.js projects, freelance work
 
-**Get in touch:** [Portfolio](https://your-portfolio.com) | [LinkedIn](https://linkedin.com/in/yourname) | [GitHub](https://github.com/yourusername)
+**Get in touch:** [Portfolio](https://molina-rogemson.vercel.app/) | [LinkedIn](www.linkedin.com/in/rogemson-molina-5b228b305) | [GitHub](https://github.com/Rogemson)
 
 ---
 
@@ -512,6 +477,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 Have questions? Open an issue on GitHub or reach out directly.
+Email: **jemson.personal@gmail.com**
 
 **Last Updated:** October 31, 2025  
 **Status:** Production Ready ✅
