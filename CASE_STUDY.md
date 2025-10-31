@@ -419,6 +419,6 @@ This project serves as a **production-ready portfolio piece** that attracts high
 **Status:** Production Ready ✅  
 **Available For:** Shopify projects, Next.js development, freelance work
 
-**Portfolio:** [Your Portfolio URL]  
-**LinkedIn:** [Your LinkedIn Profile]  
-**GitHub:** [Your GitHub Profile]
+**Portfolio:** [molina-rogemson.vercel.app]  
+**LinkedIn:** [www.linkedin.com/in/rogemson-molina-5b228b305]  
+**GitHub:** [(https://github.com/Rogemson)]
