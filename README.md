@@ -6,7 +6,7 @@ A **production-ready, high-performance headless e-commerce store** built with **
 
 ## 🚀 Live Demo
 
-**[View Live Demo](https://luxe-store.vercel.app)** 
+**[View Live Demo](https://zoster.vercel.app)** 
 
 ---
 
