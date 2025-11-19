@@ -30,7 +30,7 @@
 **Timeline:** 12 weeks (part-time, ~15 hours/week)  
 **Tech Stack:** Next.js 14, TypeScript, Tailwind CSS, Shopify GraphQL API, Vercel, Prisma, PostgreSQL, Redis, n8n, Klaviyo, Google Analytics 4  
 **Live Demo:** zoster.vercel.app 
-**GitHub:** [github.com/yourname/luxe-shopify](https://github.com/yourname/luxe-shopify) (open source available)
+**GitHub:** [github.com/Rogemson/luxe](https://github.com/Rogemson/luxe) (open source available)
 
 ---
 
