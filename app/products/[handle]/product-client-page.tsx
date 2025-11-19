@@ -96,9 +96,25 @@ export default function ProductClientPage({
   const [liveStockData, setLiveStockData] = useState<Record<string, { availableForSale: boolean, quantityAvailable: number | null }>>({})
   const [isLoadingStock, setIsLoadingStock] = useState(false)
 
-  // ✅ OPTIMIZED: Only fetch live stock when user interacts with quantity or tries to add to cart
+  // ✅ IMPROVED: Generate descriptive alt text based on variant
+  const getImageAltText = useCallback((index: number, isMainImage: boolean = false) => {
+    const variantDesc = activeVariant?.selectedOptions
+      .map(opt => opt.value)
+      .join(' ') || ''
+    
+    if (isMainImage) {
+      return variantDesc 
+        ? `${product.title} in ${variantDesc} - Main product image`
+        : `${product.title} - Main product image`
+    }
+    
+    return variantDesc
+      ? `${product.title} in ${variantDesc} - View ${index + 1} of ${images.length}`
+      : `${product.title} - View ${index + 1} of ${images.length}`
+  }, [product.title, activeVariant?.selectedOptions])
+
   const fetchLiveStock = useCallback(async (variantId: string) => {
-    if (liveStockData[variantId]) return // Already fetched
+    if (liveStockData[variantId]) return
     
     setIsLoadingStock(true)
     try {
@@ -119,19 +135,15 @@ export default function ProductClientPage({
     }
   }, [liveStockData])
 
-  // ✅ OPTIMIZED: Only fetch stock when variant changes AND user is about to interact
   useEffect(() => {
     if (!activeVariant) return
     
-    // ✅ Use cached stock data first (from SSR/ISR)
     const cachedStock = activeVariant.quantityAvailable
     
-    // ✅ Only fetch live if stock is low or out
     if (cachedStock !== null && cachedStock <= 10) {
-      // Defer fetching until user shows intent to purchase
       const timer = setTimeout(() => {
         fetchLiveStock(activeVariant.id)
-      }, 1000) // Wait 1s before fetching
+      }, 1000)
       
       return () => clearTimeout(timer)
     }
@@ -146,26 +158,22 @@ export default function ProductClientPage({
         }
       : null
 
-  // Get images for the gallery
   const images = useMemo(() => {
     const mainImage = activeVariant?.image || product.image
     const otherImages = product.images.filter((img) => img !== mainImage)
     return [mainImage, ...otherImages].filter(Boolean) as string[]
   }, [product.image, product.images, activeVariant?.image])
 
-  // Get stock info for active variant
   const maxQuantity = currentVariantStock?.quantityAvailable ?? null
   const isOutOfStock = currentVariantStock ? !currentVariantStock.availableForSale : false
   const showLowStock =
     (currentVariantStock?.quantityAvailable ?? 0) <= 10 &&
     (currentVariantStock?.quantityAvailable ?? 0) > 0
 
-  // Get price display
   const displayPrice = activeVariant?.price ?? product.price
   const displayOriginalPrice =
     activeVariant?.compareAtPrice ?? product.compareAtPrice
 
-  // Image gallery functions
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length)
   }
@@ -173,7 +181,6 @@ export default function ProductClientPage({
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)
   }
 
-  // Update main image when variant changes
   useEffect(() => {
     if (activeVariant?.image) {
       const newIndex = images.findIndex((img) => img === activeVariant.image)
@@ -183,7 +190,6 @@ export default function ProductClientPage({
     }
   }, [activeVariant?.image, images])
 
-  // Reset quantity when variant changes and new max is lower
   useEffect(() => {
     if (maxQuantity !== null && quantity > maxQuantity) {
       setQuantity(Math.max(1, maxQuantity))
@@ -196,7 +202,6 @@ export default function ProductClientPage({
       return
     }
 
-    // ✅ Fetch fresh stock before adding to cart
     if (!liveStockData[activeVariant.id]) {
       await fetchLiveStock(activeVariant.id)
     }
@@ -259,7 +264,6 @@ export default function ProductClientPage({
       return
     }
 
-    // ✅ Fetch fresh stock before checkout
     if (!liveStockData[activeVariant.id]) {
       await fetchLiveStock(activeVariant.id)
     }
@@ -310,7 +314,7 @@ export default function ProductClientPage({
       const checkoutUrl = await createShopifyCheckout(lines)
 
       toast.dismiss('buy-now-loading')
-      window.location.assign(checkoutUrl) // ✅ Fixed immutability warning
+      window.location.assign(checkoutUrl)
     } catch (error) {
       console.error('Buy now error:', error)
 
@@ -349,7 +353,7 @@ export default function ProductClientPage({
               {images[currentImageIndex] ? (
                 <Image
                   src={images[currentImageIndex]}
-                  alt={product.title || 'Product image'}
+                  alt={getImageAltText(currentImageIndex, true)}
                   fill
                   priority
                   sizes="(max-width: 768px) 100vw, 50vw"
@@ -399,7 +403,7 @@ export default function ProductClientPage({
                     {img ? (
                       <Image
                         src={img}
-                        alt={`${product.title || 'Product'} thumbnail ${i + 1}`}
+                        alt={getImageAltText(i)}
                         fill
                         sizes="80px"
                         className="object-cover"

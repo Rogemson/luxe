@@ -24,5 +24,9 @@ User-agent: Bingbot
 Allow: /
 Crawl-delay: 2
 
-# Sitemap location
+# ✅ UPDATED: Reference both main sitemap and image sitemap
 Sitemap: https://zoster.vercel.app/sitemap.xml
+Sitemap: https://zoster.vercel.app/image-sitemap.xml
+
+# ✅ Optional: If using sitemap index (for 1000+ products), use this instead:
+# Sitemap: https://zoster.vercel.app/sitemap-index.xml

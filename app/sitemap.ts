@@ -6,19 +6,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     // Fetch all products and collections
     const [products, collections] = await Promise.all([
-      getProducts(250), // Adjust based on your catalog size
+      getProducts(250),
       getCollections(),
     ])
 
-    // Product URLs
+    // ✅ IMPROVED: Use actual updatedAt if available from Shopify
     const productUrls = products.map((product) => ({
       url: `${siteUrl}/products/${product.handle}`,
-      lastModified: new Date(),
+      // Use product.updatedAt if your ShopifyProduct type includes it
+      // Otherwise fall back to current date
+      lastModified: (product as any).updatedAt ? new Date((product as any).updatedAt) : new Date(),
       changeFrequency: 'monthly' as const,
-      priority: 0.7,
+      priority: product.availableForSale ? 0.8 : 0.5, // ✅ Lower priority for out-of-stock
     }))
 
-    // Collection URLs
+    // ✅ Collection URLs with appropriate priorities
     const collectionUrls = collections.map((collection) => ({
       url: `${siteUrl}/collections/${collection.handle}`,
       lastModified: new Date(),
@@ -26,18 +28,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }))
 
-    // Static pages
+    // ✅ Static pages with appropriate change frequencies
     const staticPages = [
       {
         url: siteUrl,
         lastModified: new Date(),
-        changeFrequency: 'weekly' as const,
+        changeFrequency: 'daily' as const, // ✅ Homepage changes frequently
         priority: 1.0,
       },
       {
         url: `${siteUrl}/products`,
         lastModified: new Date(),
-        changeFrequency: 'weekly' as const,
+        changeFrequency: 'daily' as const, // ✅ Product listing changes frequently
         priority: 0.9,
       },
       {
@@ -46,11 +48,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'weekly' as const,
         priority: 0.9,
       },
+      // ✅ Add more static pages if you have them
+      {
+        url: `${siteUrl}/about`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.5,
+      },
+      {
+        url: `${siteUrl}/contact`,
+        lastModified: new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.5,
+      },
     ]
 
     return [...staticPages, ...collectionUrls, ...productUrls]
   } catch (error) {
     console.error('Failed to generate sitemap:', error)
+    // ✅ Return minimal sitemap on error
     return [
       {
         url: siteUrl,

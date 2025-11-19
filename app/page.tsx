@@ -6,7 +6,8 @@ import Link from "next/link"
 import { getCollections } from "@/lib/shopify-client"
 import { DataErrorState } from "@/components/data-error-state"
 import { NewsletterSignup } from '@/components/newsletter-signup'
-import Script from 'next/script' // ✅ Added for Klaviyo
+import Script from 'next/script'
+import { generateWebsiteSchema } from '@/lib/jsonld' // ✅ Import website schema
 
 export const revalidate = 3600
 
@@ -14,12 +15,20 @@ export default async function Home() {
   const collections = await getCollections()
   const featuredCollections = collections.slice(0, 3)
 
+  // ✅ Generate website schema for homepage
+  const websiteSchema = generateWebsiteSchema()
+
   return (
     <main className="min-h-screen bg-background">
-      {/* ✅ Klaviyo loads ONLY on homepage, after everything else */}
+      {/* ✅ NEW: Website Schema for homepage */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+      />
+
       <Script
         id="klaviyo-tracking"
-        strategy="lazyOnload" // ✅ Changed from afterInteractive - loads after page is interactive
+        strategy="lazyOnload"
         src={`https://static.klaviyo.com/onsite/js/${process.env.NEXT_PUBLIC_KLAVIYO_PUBLIC_KEY}/klaviyo.js`}
       />
       

@@ -19,6 +19,7 @@ export async function generateMetadata({
       robots: {
         index: false,
         follow: false,
+        noarchive: true,
       },
     }
   }
@@ -27,15 +28,23 @@ export async function generateMetadata({
   const description = `${product.description?.substring(0, 160) || product.title} - $${product.price.toFixed(2)}`
   const url = `${siteUrl}/products/${handle}`
   
-  // ✅ Use product image directly (fallback)
   const imageUrl = product.image || `${siteUrl}/og-image.png`
 
   return {
     title,
     description,
+    // ✅ IMPROVED: Enhanced robots directives for out-of-stock products
     robots: {
-      index: product.availableForSale ? true : false,
+      index: product.availableForSale,
       follow: true,
+      noarchive: !product.availableForSale, // ✅ Prevent Google from caching out-of-stock pages
+      nocache: !product.availableForSale, // ✅ Don't cache unavailable products
+      googleBot: {
+        index: product.availableForSale,
+        follow: true,
+        'max-image-preview': 'large',
+        'max-snippet': product.availableForSale ? -1 : 0, // ✅ No snippets for out-of-stock
+      },
     },
     openGraph: {
       type: 'website',
@@ -45,7 +54,7 @@ export async function generateMetadata({
       siteName,
       images: [
         {
-          url: imageUrl, // ✅ Simple image URL
+          url: imageUrl,
           width: 1200,
           height: 630,
           alt: product.title,
