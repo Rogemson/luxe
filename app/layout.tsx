@@ -53,7 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* ✅ Preconnect to GA for faster analytics */}
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         
-        {/* ❌ REMOVED KLAVIYO - Will be loaded only on homepage */}
+        <meta name="google-site-verification" content="nWEJaEXuavHBP3Zoc8b6VANAFux9KHENDVlJNSMgBO4" />
       </head>
       <body className="font-sans antialiased">
         {/* ✅ Reduced nesting - combine related providers */}
